@@ -5,8 +5,8 @@ function dostatsforsingleneurons
 
 %% load data
 
-load OUT_2updatedlength.mat %load dataset with an exclusion zone of 50um on each side of the border
-% load OUT_2updatedlength_all.mat %load dataset with an exclusion zone of % 50um on each side of the border - if looking at non-v1 cells
+% load OUT_2updatedlength.mat %load dataset with an exclusion zone of 50um on each side of the border
+load OUT_2updatedlength_all.mat %load dataset with an exclusion zone of % 50um on each side of the border
 
 
 load goodcells.mat% load the names of all the high confidence fills that will remain in analysis
