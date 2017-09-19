@@ -96,7 +96,7 @@ if doPlot
 end
 
 out.hasPremature = any(out.premature);
-
+out.cellID = data.details.cellID;
 
 function d=pathDistance(treeData,pth,voxelSize)
     %Sum the euclidean distance along the path of points defined by pth

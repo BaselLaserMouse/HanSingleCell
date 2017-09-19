@@ -37,15 +37,17 @@ for ii=1:length(data)
     for jj=1:length(indPremature)
         switch data(ii).nodeType{indPremature(jj)}
         case 'fading'
+            fprintf('Fading termination in cell %s\n', data(ii).cellID)
             mrkr={'or','MarkerFaceColor',[1,0.7,0.7]};
         case 'callosal_fading'
+            fprintf('Fading callosal termination in cell %s\n', data(ii).cellID)
             mrkr={'or','MarkerFaceColor',[1,0.2,0.2]};
         otherwise
             mrkr={'ok'};
         end
 
         mrkr={'ok'}; %% COMMENT OUT TO HIGHLIGHT FADING TERMINATIONS. 
-        
+
         y = data(ii).distToRoot(indPremature(jj));
         plot(max(x),y,mrkr{:})
 
@@ -54,7 +56,7 @@ for ii=1:length(data)
     end
 end
 
-title( sprintf('%d neurons',size(pltData,1)) )
+title( sprintf('%d abrupt terminations',size(pltData,1)) )
 X = xlim;
 
 Y = ylim;
@@ -87,7 +89,7 @@ for ii=1:length(data)
     n=n+1;
     pltData(n,2) = median(y) - median(x);
 end
-title( sprintf('%d neurons',size(pltData,1)) )
+title( sprintf('%d abrupt terminations',size(pltData,1)) )
 
 X = xlim;
 Y = ylim;
