@@ -43,6 +43,7 @@ for ii=1:length(data)
             fprintf('Fading callosal termination in cell %s\n', data(ii).cellID)
             mrkr={'or','MarkerFaceColor',[1,0.2,0.2]};
         otherwise
+            fprintf('%s termination in cell %s\n', data(ii).nodeType{indPremature},data(ii).cellID)
             mrkr={'ok'};
         end
 

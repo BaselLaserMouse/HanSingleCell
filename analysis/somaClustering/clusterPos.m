@@ -14,8 +14,12 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
     % % The following loads "cellMat"
-    % >> load goodCellsMatrixFromJustus.mat   
+    % >> load goodCellsMatrixFromJustus.mat
     % >> clusterPos(cellMat,cleanCells,3)
+    %
+    %
+    % Rob Campbell - Basel 2017
+
 
     if nargin<3
         highlightName=[];
@@ -49,7 +53,6 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     H = rmfield(H,'sagittal');
 
     set(H.axesTransverse,'position',[0.05,0.05,0.8,0.9])
-
 
 
     % Make all highlighted areas areas gray apart from the selected one
@@ -115,7 +118,9 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
 
 
     % Plot soma positions
-    title(sprintf('Highlighting cells projecting to "%s"\n', highlightName));
+    if ~isempty(highlightName)
+        set(gcf,'Name',(sprintf('Highlighting cells projecting to "%s"\n', highlightName)) );
+    end
     xlim([260,440])
     ylim([100,250]) 
 
@@ -123,6 +128,7 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     S=scc.diagnostic.summariseTerminationTypes(cleanCells,true); %Second element is V1-only
     V1cellsInds = S(2).indexValuesOfAllCells;
 
+    %Plot the somata
     d = cleanCells.returnData;
     d = d(V1cellsInds);
     details=[d.details];
@@ -130,9 +136,10 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     mSize=12;
     plotSomaPositions(cellMat(1),d,details,highlightName,{'ob','MarkerSize',mSize},{'ob', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize})
     if length(cellMat)>1
-        plotSomaPositions(cellMat(2),d,details,highlightName,{'sr','MarkerSize',mSize+1},{'sr', 'MarkerFaceColor', [1,0.5,0.5],'MarkerSize',mSize+1})
+        plotSomaPositions(cellMat(2),d,details,highlightName,{'sb','MarkerSize',mSize+1},{'sb', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize+1})
     end
     hold off
+
 
 
     if nargout>0
