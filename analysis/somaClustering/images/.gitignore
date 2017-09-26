@@ -1,2 +1,4 @@
 *.png
 /notes.txt
+*.eps
+*.fig

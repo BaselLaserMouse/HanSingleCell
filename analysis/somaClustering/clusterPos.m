@@ -33,12 +33,11 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
 
 
     A=aratools.atlascacher.getCachedAtlas;  
-    [visualAreaNames,colorMap]=brainAreaNames.visualAreas;
     load('brainAreaProjections.mat') %From: ReferenceAtlas/ARA_CCFv3/ARA_25_micron_mhd/projections/
 
 
     %The area names and abbreviations:
-    [n,c]=brainAreaNames.visualAreas; 
+    [n,c,abrv]=brainAreaNames.visualAreas; 
 
     if ~isempty(highlightName) && isnumeric(highlightName)
         highlightName = c.areaNames{highlightName};
