@@ -11,13 +11,13 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     %           if the structure is of length 2 then we assume the first index contains
     %           the "good" cells from the main paper and the second index the premature
     %           cells.
+    % cleanCells - The "clean cells" as a Xylem data object.
     %
     %
     % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
-    % % The following loads "cellMat"
-    % >> load goodCellsMatrixFromJustus.mat
-    % >> clusterPos(cellMat,cleanCells,3)
+    % >> load allCellMat.mat
+    % >> clusterPos(allCellMat,cleanCells,3)
     %
     %
     % % Go through all projection targets and make an output table for each
