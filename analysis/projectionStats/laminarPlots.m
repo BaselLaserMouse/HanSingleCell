@@ -1,7 +1,7 @@
-function varargout = projectionDensity(cellMat,cleanCells,areaMap)
-    % Address whether the total length of axon scales with the number of target brain ares
+function varargout = laminarPlots(cellMat,cleanCells,areaMap)
+    % Plot distribution of terminals by layer within a subset of defined areas
     %
-    % function varargout = projectionDensity(cellMat,cleanCells,areaMap)
+    % varargout = laminarPlots(cellMat,cleanCells,areaMap)
     %
     %
     % Inputs
@@ -13,12 +13,10 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
     %              ones where the brain was falling apart)
     % areaMap - is made by makeAreaMap
     %
-    % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
     % >> load allCellMat.mat
     % >> load areaMap
     % >> projectionDensity(allCellMat,cleanCells,m)
-    %
 
 
     % Get the length of axon for each neuron in the cellMat array
@@ -31,7 +29,8 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
 
     clf
     [~,t]=aratools.utils.whiteMatterInds;
-    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 0, ...
+    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', ...
+        'excludeBorders', 4, ...
         'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular',t{:}});
 
     M=D.dataMat*5; % it's 5 microns per voxel
@@ -58,7 +57,7 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
     hold off
     ylabel('Axon length in all target areas (mm)')
     xlabel('Number of projection targets')
-    xlim([0.5 8])
+    xlim([0.5 7])
     jitter
     title('Total axon length across all target areas as function of the number of target areas')
     grid 
@@ -93,7 +92,7 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
     mu = nanmean(Md,1);
     s = sum(~isnan(Md),1);
     plot(s,mu,'ob');
-    xlim([0.5 8])
+    xlim([0.5 7])
     jitter 
     xlabel('Number of projection targets')
     ylabel('Average axon length/area size in mm')
@@ -153,7 +152,7 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
     end
 
     grid on
-    xlim([0.5,6])
+    xlim([0.5,5])
     jitter 
 
     legend(areasToPlot)
