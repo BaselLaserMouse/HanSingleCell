@@ -31,13 +31,12 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap)
 
     clf
     [~,t]=aratools.utils.whiteMatterInds;
-    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 0, ...
+    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, ...
         'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular',t{:}});
 
     M=D.dataMat*5; % it's 5 microns per voxel
-    M(M<20E2)=0; % Exclude areas with small lengths
+    M(M<10E2)=0; % Exclude areas with small lengths
     M = M * 1E-3; % convert to mm
-    % TODO: also check what "total distance" is in the cleanCells array. What is the distance between points?
 
     %find the columns in the matrix that correspond to the premature cells so we can highight these differently
     prem = zeros(1,size(M,2),'logical');
