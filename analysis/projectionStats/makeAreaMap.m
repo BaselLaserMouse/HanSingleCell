@@ -18,20 +18,24 @@ function m = makeAreaMap(cellMat,cleanCells)
     % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
     % >> load allCellMat.mat
-    % >> m = makeAreMap(allCellMat);
+    % >> m = makeAreMap(allCellMat,cleanCells);
     %
     % Rob Campbell
 
     m = containers.Map;
 
     areaNames = unique(cat(1,cellMat.lab));
+    [~,t]=aratools.utils.whiteMatterInds;
+    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, ...
+        'excludeSomataNonV1', false, ...
+        'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular systems',t{:}});
 
-    D=pointsByAreaPlot(cleanCells);
     areaNames = unique([areaNames; D.areaNamesInSamples]);
 
 
 
     for ii=1:length(areaNames)
-        fprintf('%d/%d. %s\n', ii, length(areaNames), areaNames{ii});
-        m(areaNames{ii}) = aratools.utils.getAreaVolume(areaNames{ii});
+        vol = aratools.utils.getAreaVolume(areaNames{ii});
+        m(areaNames{ii}) = vol;
+        fprintf('%d/%d. %s - %0.3f mm^3\n', ii, length(areaNames), areaNames{ii},vol)
     end
