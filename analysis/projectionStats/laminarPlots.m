@@ -1,175 +1,122 @@
-function varargout = laminarPlots(cellMat,cleanCells,areaMap)
+function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
     % Plot distribution of terminals by layer within a subset of defined areas
     %
-    % varargout = laminarPlots(cellMat,cleanCells,areaMap)
+    % out = laminarPlots(laminarData,cleanOnly)
     %
     %
     % Inputs
-    % cellMat - the binary matrices and associated labels from Justus packages in structure.
-    %           if the structure is of length 2 then we assume the first index contains
-    %           the "good" cells from the main paper and the second index the premature
-    %           cells.
-    % cleanCells - Xylem data structure containing the selected good cells (e.g. no crappy 
-    %              ones where the brain was falling apart)
-    % areaMap - is made by makeAreaMap
+    % laminarData - see below
+    % cleanCells - xylem structure
+    % cleanOnly - false by default
     %
-    % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
-    % >> load allCellMat.mat
-    % >> load areaMap
-    % >> projectionDensity(allCellMat,cleanCells,m)
+    % Example
+    % >> for ii=1:length(visNames); OUT(ii)=getLaminarData(cleanCells,visNames{ii}, LOADED_ARA); end
+    % >> laminarPlots(OUT)
 
-
-    % Get the length of axon for each neuron in the cellMat array
-
-    cellMat(1).totalDistance=[];
-    for ii=1:length(cellMat)
-        cellMat(ii) = getAxonLength(cellMat(ii), cleanCells);
+    if nargin<3
+        cleanOnly=false;
     end
 
+    if cleanOnly
+        % Filter neurons by premature/not 
+        s=scc.diagnostic.summariseTerminationTypes(cleanCells,true);
+        s=s(4); %No back-labelled cells V1 only
+        cleanCells = s.IDsofCleanCells;
 
-    clf
-    [~,t]=aratools.utils.whiteMatterInds;
-    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', ...
-        'excludeBorders', 4, ...
-        'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular',t{:}});
-
-    M=D.dataMat*5; % it's 5 microns per voxel
-    M(M<20E2)=0; % Exclude areas with small lengths
-    M = M * 1E-3; % convert to mm
-    % TODO: also check what "total distance" is in the cleanCells array. What is the distance between points?
-
-    %find the columns in the matrix that correspond to the premature cells so we can highight these differently
-    prem = zeros(1,size(M,2),'logical');
-    for ii=1:length(prem)
-        if ~isempty(strmatch(D.cellIDs{ii},cellMat(2).id))
-            prem(ii) = true;
+        %Go through everything and remove non-clean cells
+        for ii=1:length(laminarData)
+            tData=laminarData(ii);
+            ind=[];
+            for jj=1:length(tData.cellID)
+                if ~isempty( strmatch(tData.cellID{jj},cleanCells) )
+                    ind(end+1)=jj;
+                end
+            end % jj
+            tData.cellID = tData.cellID(ind);
+            tData.counts = tData.counts(:,:,ind);
+            laminarData(ii) = tData;
         end
     end
 
 
-    % Axon length as a function of the number of target areas
-    subplot(2,2,1)
-    p = M(:,prem);
-    plot(sum(p>0), sum(p),'sb')
-    hold on
-    n = M(:,~prem);
-    plot(sum(n>0), sum(n),'sb');%ob','markerfacecolor',[0.5,0.5,1])
-    hold off
-    ylabel('Axon length in all target areas (mm)')
-    xlabel('Number of projection targets')
-    xlim([0.5 7])
-    jitter
-    title('Total axon length across all target areas as function of the number of target areas')
-    grid 
-    box off
+    disp('CHECK UNITS ON Y AXIS')
 
 
 
-    % To calculate axon density averaged over all areas as a function of number of target areas
-    % we will first make a version of M where we don't have axon length in mm but axon length in mm 
-    % divided by area volume
-    Md = M;
-    vols = zeros(length(D.areaNamesInSamples),1);
-    for ii=1:length(vols)
-        tArea = D.areaNamesInSamples{ii};
-        if ~areaMap.isKey(tArea)
-            fprintf('No key %s found in map. skipping\n', tArea)
-            continue
-        end
-        vols(ii) = areaMap(tArea);
-        if vols(ii)==0;
-            fprintf('Warning: returning 0 mm^3 for area %s\n', tArea)
-        end
-    end
-    vols = repmat(vols,1,size(M,2));
-    Md = M./vols;
-    Md(Md==0) = NaN ;
-    Md(isinf(Md)) = NaN ;
+    %doBoxPlots
+    doLinePlots
 
 
-
-    subplot(2,2,2)
-    mu = nanmean(Md,1);
-    s = sum(~isnan(Md),1);
-    plot(s,mu,'ob');
-    xlim([0.5 7])
-    jitter 
-    xlabel('Number of projection targets')
-    ylabel('Average axon length/area size in mm')
-    title('Axon density averaged over all areas as function of num target areas')
-    grid 
-    box off
+    function doLinePlots
+        clf
+        n=1;
+        for ii=1:length(laminarData)
 
 
+            if isempty(laminarData(ii).counts)
+                fprintf('Nothing for area %s\n', laminarData(ii).areaName)
+                continue
+            end
+            if size(laminarData(ii).counts,3)<3
+                fprintf('Skipping  area %s with only % cells\n', laminarData(ii).areaName, ...
+                    size(laminarData(ii).counts,3)<3)
+                continue
+            end
 
-    % length as a function of axon density
-    subplot(2,2,3)
-    cla 
-    hold on
-    plot(Md(:),M(:),'.','Color',[1,1,1]*0.5)
-    for ii=1:size(Md,1)
-        tMd = Md(ii,:);
-        tM = M(ii,:);
+            subplot(3,3,n)
 
-        for kk=1:length(tM)
-            text(tMd(kk), tM(kk), num2str(ii))
+            tmp = squeeze(laminarData(ii).counts(:,2,:));
+            plot(tmp)
+
+            title( sprintf('%s (%d cells)',...
+                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
+
+            % Make nice x axis labels
+            lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);
+            set(gca,'XTickLabel',lab)
+            n=n+1;
+            grid on
+            box off
         end
 
-    end
-
-    title(sprintf('9. %s; 3. %s; 28. %s\n11. %s 12. %s', ...
-        D.areaNamesInSamples{9}, ...
-        D.areaNamesInSamples{3}, ...
-        D.areaNamesInSamples{28}, ...
-        D.areaNamesInSamples{11}, ...
-        D.areaNamesInSamples{11} ...
-        ))
+        labelEdgeSubPlots('Layer','axon length') 
+    end %doLinePlots
 
 
-    grid 
-    box off
-    xlabel('Axon density (length/area)')
-    ylabel('Axon length')
+    function doBoxPlots
+        clf
+        n=1;
+        for ii=1:length(laminarData)
 
 
+            if isempty(laminarData(ii).counts)
+                fprintf('Nothing for area %s\n', laminarData(ii).areaName)
+                continue
+            end
+            if size(laminarData(ii).counts,3)<3
+                fprintf('Skipping  area %s with only % cells\n', laminarData(ii).areaName, ...
+                    size(laminarData(ii).counts,3)<3)
+                continue
+            end
 
-    % Does projection density to a chosen area vary depending on the number of target areas?
-    subplot(2,2,4)
-    areasToPlot = {'Lateral visual area', ...
-        'posteromedial visual area', ...
-        'Postrhinal area'};
-    cla
-    hold on
-    mrkr = {{'or', 'MarkerFaceColor', [1.0,0.5,0.5]}, ...
-            {'sb', 'MarkerFaceColor', [0.5,0.5,1.0]}, ...
-            {'gp', 'MarkerFaceColor', [0.5,1.0,0.5]}};
-    for ii=1:length(areasToPlot)
-        ind=strmatch(areasToPlot{ii},D.areaNamesInSamples); % Row with connections to this are
-        tmp = M(ind,:);
-        f = find(tmp>0); % All neurons projecting to this area
-        tmp = M(:,f); % The matrix with only these cells
-        plot(sum(tmp>0), tmp(ind,:), mrkr{ii}{:});%ob','markerfacecolor',[0.5,0.5,1])
-    end
+            subplot(3,3,n)
+            tmp = squeeze(laminarData(ii).counts(:,2,:))';
+            tmp = single(tmp);
+            if ~isvector(tmp)
+                notBoxPlot(tmp)
+            else
+                plot(tmp,'ok-')
+            end
+            title( sprintf('%s (%d cells)',...
+                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
 
-    grid on
-    xlim([0.5,5])
-    jitter 
+            % Make nice x axis labels
+            lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);
+            set(gca,'XTickLabel',lab)
+            n=n+1;
+        end
 
-    legend(areasToPlot)
-    ylabel('Axon length in named area (mm)')
-    xlabel('Number of projection targets')
-    title('Axon length in named target area as a function of the number of areas')
+        labelEdgeSubPlots('Layer','axon length') 
+    end %doBoxPlots
 
-    if nargout>0
-        varargout{1} = cellMat;
-    end
-
-function C = getAxonLength(C,cleanCells)
-     D = cleanCells.returnData;
-     details = [D.details];
-     cellIDs = {details.cellID};
-
-     for ii=1:length(C.id)
-         ind = strmatch(C.id{ii}, cellIDs);
-         C.totalDistance(ii) = D(ind).totalDistance;
-     end
+end %close laminarPlots

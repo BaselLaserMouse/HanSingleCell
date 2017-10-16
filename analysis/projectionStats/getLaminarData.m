@@ -1,5 +1,5 @@
 function varargout = getLaminarData(cleanCells,areaName,atlas)
-    % Plot distribution of terminals by layer within a subset of defined areas
+    % Obtain distributions of terminals by layer within a subset of defined areas
     %
     % out = getLaminarData(cleanCells,areaName,atlas)
     %
@@ -14,7 +14,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     %
     % Outputs
     % out - a structure that contains the data that can be plotted and details of what the 
-    %.      data contain.
+    %       data contain.
     %
     % Examples
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
@@ -60,15 +60,19 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     data = cleanCells.returnData('excludeBorders',2);
     details = [data.details];
     cellIDs = {details.cellID};
-
+    thisCellID={};
 
     COUNTS=[];
+    AREA=[];
+
     for ii=1:length(thisArea)
         thisCell = D.cellIDs{thisArea(ii)};
         thisInd = strmatch(thisCell,cellIDs);
         theseData = data(thisInd);
-
-        COUNTS=cat(3,COUNTS,countsInLayers(theseData,childAreas,parentInd,atlas));
+        thisCellID{ii} = thisCell;
+        [tmpC,tmpA]=countsInLayers(theseData,childAreas,parentInd,atlas);
+        COUNTS=cat(3,COUNTS,tmpC);
+        AREA = [AREA,tmpA];
 
     end
 
@@ -76,11 +80,16 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
         out.counts = COUNTS;
         out.areaTable = childAreas;
         out.areaName = areaName;
+        out.cellID = thisCellID;
+        out.planesInARA = unique(AREA);
         varargout{1}=out;
     end
 
 
-function out=countsInLayers(theseData,childAreas,parentInd,atlas)
+
+
+% Internal functions follow 
+function [out,planesWithAxonInThisArea]=countsInLayers(theseData,childAreas,parentInd,atlas)
     % out - n by 2 with first column being ID and second being counts
 
     f = find(theseData.pointsInARA.upSampledPoints.ARAindex==parentInd);
@@ -96,9 +105,11 @@ function out=countsInLayers(theseData,childAreas,parentInd,atlas)
         return
     end
 
+    planesWithAxonInThisArea=[];
     for ii=1:length(f)
         sp = theseData.pointsInARA.upSampledPoints.sparsePointMatrix(f(ii),:);
         inds(ii) = atlas.atlasVolume(sp(1),sp(2),sp(3));
+        planesWithAxonInThisArea(ii)=sp(1);
     end
 
     [counts,IDs] = hist(inds, unique(inds));
@@ -114,7 +125,7 @@ function out=countsInLayers(theseData,childAreas,parentInd,atlas)
     end
 
     out = [allLayerIDs,allCounts];
-
+    planesWithAxonInThisArea = unique(planesWithAxonInThisArea);
 
 function [childTable,parentInd] = getChildAreas(areaName)
     childTable = getAllenStructureList('childrenOf',areaName);
