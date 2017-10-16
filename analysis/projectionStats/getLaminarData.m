@@ -63,16 +63,17 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     thisCellID={};
 
     COUNTS=[];
-    AREA=[];
+    PLANES=[];
 
     for ii=1:length(thisArea)
         thisCell = D.cellIDs{thisArea(ii)};
         thisInd = strmatch(thisCell,cellIDs);
         theseData = data(thisInd);
         thisCellID{ii} = thisCell;
-        [tmpC,tmpA]=countsInLayers(theseData,childAreas,parentInd,atlas);
-        COUNTS=cat(3,COUNTS,tmpC);
-        AREA = [AREA,tmpA];
+        [tmpC,tmpP]=countsInLayers(theseData,childAreas,parentInd,atlas);
+        COUNTS=cat(3,COUNTS,tmpC); %The number of points in the up-sampled axons
+        PLANES = [PLANES,tmpP]; %The planes in the atlas that contain axon in this cortical area
+
 
     end
 
@@ -81,7 +82,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
         out.areaTable = childAreas;
         out.areaName = areaName;
         out.cellID = thisCellID;
-        out.planesInARA = unique(AREA);
+        out.planesInARA = unique(PLANES);
         varargout{1}=out;
     end
 
@@ -119,12 +120,16 @@ function [out,planesWithAxonInThisArea]=countsInLayers(theseData,childAreas,pare
     allCounts = zeros(size(allLayerIDs));
 
     for ii=1:length(allLayerIDs)
+        % Add up the number of voxels in this layer
+        voxelsInLayer(ii) = length(find(atlas.atlasVolume==allLayerIDs(ii)));
+
         f=find(IDs==allLayerIDs(ii));
         if isempty(f), continue, end
         allCounts(ii) = counts(f);
-    end
 
-    out = [allLayerIDs,allCounts];
+    end
+    
+    out = [allLayerIDs,voxelsInLayer',allCounts];
     planesWithAxonInThisArea = unique(planesWithAxonInThisArea);
 
 function [childTable,parentInd] = getChildAreas(areaName)
