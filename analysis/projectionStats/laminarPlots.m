@@ -1,17 +1,13 @@
 function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
     % Plot distribution of terminals by layer within a subset of defined areas
     %
-    % out = laminarPlots(laminarData,cleanOnly)
+    % out = laminarPlots(laminarData,cleanCells,cleanOnly)
     %
     %
     % Inputs
     % laminarData - see below
     % cleanCells - xylem structure
     % cleanOnly - false by default
-    %
-    % Example
-    % >> for ii=1:length(visNames); OUT(ii)=getLaminarData(cleanCells,visNames{ii}, LOADED_ARA); end
-    % >> laminarPlots(OUT)
 
     if nargin<3
         cleanOnly=false;
@@ -43,11 +39,24 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
 
 
 
-    %doBoxPlots
-    doLinePlots
+    doBoxPlots
+    %doLinePlots
 
+
+    
+    labelEdgeSubPlots('Layer','axon length') 
+
+    c=get(gcf,'children');
+    yl=[];
+    for ii=1:length(c)
+        tmp = c(ii).YLim;
+        yl = [yl;tmp];
+    end
+
+    set(c,'YLim',[0, max(yl(:,2))])
 
     function doLinePlots
+        % Linked points as lines so we know which cell is which in all layers
         clf
         n=1;
         for ii=1:length(laminarData)
@@ -58,7 +67,7 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
                 continue
             end
             if size(laminarData(ii).counts,3)<3
-                fprintf('Skipping  area %s with only % cells\n', laminarData(ii).areaName, ...
+                fprintf('Skipping  area %s with only %d cells\n', laminarData(ii).areaName, ...
                     size(laminarData(ii).counts,3)<3)
                 continue
             end
@@ -79,11 +88,13 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
             box off
         end
 
-        labelEdgeSubPlots('Layer','axon length') 
     end %doLinePlots
 
 
+
+
     function doBoxPlots
+        % Make notBoxPlots. One per layer
         clf
         n=1;
         for ii=1:length(laminarData)
@@ -94,18 +105,24 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
                 continue
             end
             if size(laminarData(ii).counts,3)<3
-                fprintf('Skipping  area %s with only % cells\n', laminarData(ii).areaName, ...
+                fprintf('Skipping  area %s with only %disp cells\n', laminarData(ii).areaName, ...
                     size(laminarData(ii).counts,3)<3)
                 continue
             end
 
             subplot(3,3,n)
-            tmp = squeeze(laminarData(ii).counts(:,2,:))';
-            tmp = single(tmp);
-            if ~isvector(tmp)
-                notBoxPlot(tmp)
+            counts = squeeze(laminarData(ii).counts(:,3,:))';
+            counts = single(counts);
+
+            vol = squeeze(laminarData(ii).counts(:,2,:))';
+            vol = single(vol);
+            vol = vol/length(laminarData(ii).planesInARA);
+
+            counts = counts*5; % TODO - should be correct but check
+            if ~isvector(counts)
+                notBoxPlot(counts./vol)
             else
-                plot(tmp,'ok-')
+                plot(counts,'ok-')
             end
             title( sprintf('%s (%d cells)',...
                 laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
@@ -114,9 +131,9 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
             lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);
             set(gca,'XTickLabel',lab)
             n=n+1;
+            %ylim([-100,4E3])
         end
 
-        labelEdgeSubPlots('Layer','axon length') 
     end %doBoxPlots
 
 end %close laminarPlots

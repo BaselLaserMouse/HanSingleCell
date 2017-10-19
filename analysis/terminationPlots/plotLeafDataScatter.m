@@ -47,7 +47,8 @@ for ii=1:length(data)
             mrkr={'ok'};
         end
 
-        mrkr={'ok'}; %% COMMENT OUT TO HIGHLIGHT FADING TERMINATIONS. 
+        %% COMMENT OUT TO HIGHLIGHT FADING TERMINATIONS. 
+        mrkr={'ok','markerfacecolor', [1,1,1]*0.5}; 
 
         y = data(ii).distToRoot(indPremature(jj));
         plot(max(x),y,mrkr{:})

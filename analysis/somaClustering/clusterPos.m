@@ -130,7 +130,7 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     ylim([100,250]) 
 
 
-    %Overlay the bissections lines 
+    %Overlay the bisection lines 
 
     r_h=111; %circle radius
     c_x=442; %circle offset in x

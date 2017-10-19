@@ -22,6 +22,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     %
     % >> visNames=brainAreaNames.visualAreas;
     % >> clear OUT
+    % >> aratools.cacheAtlasToWorkSpace(25); 
     % for ii=1:length(visNames); OUT(ii)=getLaminarData(cleanCells,visNames{ii}, LOADED_ARA); end
     %
 
@@ -64,17 +65,17 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
 
     COUNTS=[];
     PLANES=[];
-
+    traceFiles = {}; %The location of the raw data file
     for ii=1:length(thisArea)
         thisCell = D.cellIDs{thisArea(ii)};
+
         thisInd = strmatch(thisCell,cellIDs);
         theseData = data(thisInd);
+        traceFiles{ii} = theseData.pointsFname;
         thisCellID{ii} = thisCell;
         [tmpC,tmpP]=countsInLayers(theseData,childAreas,parentInd,atlas);
         COUNTS=cat(3,COUNTS,tmpC); %The number of points in the up-sampled axons
-        PLANES = [PLANES,tmpP]; %The planes in the atlas that contain axon in this cortical area
-
-
+        PLANES = [PLANES,tmpP]; %The planes in the atlas that contain axon in this cortical are
     end
 
     if nargout>0
@@ -83,6 +84,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
         out.areaName = areaName;
         out.cellID = thisCellID;
         out.planesInARA = unique(PLANES);
+        out.traceFiles=traceFiles;
         varargout{1}=out;
     end
 
@@ -110,7 +112,7 @@ function [out,planesWithAxonInThisArea]=countsInLayers(theseData,childAreas,pare
     for ii=1:length(f)
         sp = theseData.pointsInARA.upSampledPoints.sparsePointMatrix(f(ii),:);
         inds(ii) = atlas.atlasVolume(sp(1),sp(2),sp(3));
-        planesWithAxonInThisArea(ii)=sp(1);
+        planesWithAxonInThisArea(ii)=sp(3);
     end
 
     [counts,IDs] = hist(inds, unique(inds));
@@ -119,9 +121,12 @@ function [out,planesWithAxonInThisArea]=countsInLayers(theseData,childAreas,pare
     allLayerIDs = childAreas.id;
     allCounts = zeros(size(allLayerIDs));
 
+    % Add up the number of voxels in this layer including only planes where the
+    % neuron has axon in this area. 
+    thesePlanes = atlas.atlasVolume(:,:,planesWithAxonInThisArea);
     for ii=1:length(allLayerIDs)
-        % Add up the number of voxels in this layer
-        voxelsInLayer(ii) = length(find(atlas.atlasVolume==allLayerIDs(ii)));
+
+        voxelsInLayer(ii) = length(find(thesePlanes==allLayerIDs(ii)));
 
         f=find(IDs==allLayerIDs(ii));
         if isempty(f), continue, end
