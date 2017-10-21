@@ -41,10 +41,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     %Find the area 
     D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, ...
         'excludeSomataNonV1', true);
-
-    M=D.dataMat*5; % it's 5 microns per voxel
-    M(M<10E2)=0; % Exclude areas with small lengths
-    M = M * 1E-3; % convert to mm
+    M(M<1)=0; % Exclude areas with less than 1 mm of axon
 
     % Find cells projecting to the area in question 
     ind=strmatch(areaName,D.areaNamesInSamples);

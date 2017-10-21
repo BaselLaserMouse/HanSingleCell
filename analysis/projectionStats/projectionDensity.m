@@ -44,9 +44,7 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
         'excludeSomataNonV1', false, ...
         'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular systems',t{:}});
 
-    M=D.dataMat*5; % it's 5 microns per voxel
-    M(M<10E2)=0; % Exclude areas with small lengths
-    M = M * 1E-3; % convert to mm
+    M(M<1)=0; % Exclude areas with small lengths
 
     % Find the columns in the matrix that correspond to the premature cells so we can highight these differently
     premInd = zeros(1,size(M,2),'logical');
