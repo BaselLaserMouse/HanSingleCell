@@ -1,40 +1,39 @@
-function varargout = clusterPos(cellMat,cleanCells,highlightName)
+function varargout = clusterPos(cleanCells,highlightName)
     % Highlight soma positions of cells projecting to a given brain area
     %
-    % [plotHandles, dataTable] = clusterPos(cellMat,cleanCells,highlightName)
+    % [plotHandles, dataTable] = clusterPos(cleanCells,highlightName)
     %
     % Purpose
     % Plot the locations of somata that project to a given area
     %
     % Inputs
-    % cellMat - the binary matrices and associated labels from Justus packages in structure.
-    %           if the structure is of length 2 then we assume the first index contains
-    %           the "good" cells from the main paper and the second index the premature
-    %           cells.
     % cleanCells - The "clean cells" as a Xylem data object.
+    % highlightName - index of visual area to which to plot projections (a number from 1 to 13)
     %
     %
     % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
-    % >> load allCellMat.mat
-    % >> clusterPos(allCellMat,cleanCells,3)
+    % >> clusterPos(cleanCells,3)
     %
     %
     % % Go through all projection targets and make an output table for each
-    % >> for ii=2:13, [~,dt{ii}]=clusterPos(allCellMat,cleanCells,ii); end
+    % >> for ii=2:13, [~,dt{ii}]=clusterPos(cleanCells,ii); end
     %
     %
     % Rob Campbell - Basel 2017
 
 
-    if nargin<3
+    if nargin<2
         highlightName=[];
     end
 
 
-    A=aratools.atlascacher.getCachedAtlas;  
+    A=aratools.atlascacher.getCachedAtlas;
     load('brainAreaProjections.mat') %From: ReferenceAtlas/ARA_CCFv3/ARA_25_micron_mhd/projections/
 
+    %Make the projection matrix data
+    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, 'excludeSomataNonV1', true);
+    D.dataMat(D.dataMat<1)==0; %Exclude areas with less than 1 mm of axon
 
     %The area names and abbreviations:
     [n,c,abrv]=brainAreaNames.visualAreas; 
@@ -43,7 +42,6 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
         highlightName = c.areaNames{highlightName};
         fprintf('Highlighting cells projecting to %s\n', highlightName);
     end
-
 
     %Generate plot that we will modify
     H=overlayCellsOnThreeProjections([],projections,c);
@@ -147,25 +145,33 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     x=[289,374];
     plot(x, b0_v + x*b1_v, V1divmrkr{:})
 
+
     %Remove non-V1 cells
     S=scc.diagnostic.summariseTerminationTypes(cleanCells,true); %Second element is V1-only
-    V1cellsInds = S(2).indexValuesOfAllCells;
+
 
     %Plot the somata
-    d = cleanCells.returnData;
-    d = d(V1cellsInds);
-    details=[d.details];
+    dataFromCleanCells = cleanCells.returnData;
+
 
     mSize=12;
-    %Plot non-abrupt terminations
-    [cellLocs(1),cm(1)]=plotSomaPositions(cellMat(1),d,details,highlightName,{'ob','MarkerSize',mSize},...
-        {'ob', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize});
-    if length(cellMat)>1
-        % Plot abrupt terminations if they are present
-        [cellLocs(2),cm(2)]=plotSomaPositions(cellMat(2),d,details,highlightName,{'sb','MarkerSize',mSize+1},...
-            {'sb', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize+1});
-    end
 
+    %Plot non-abrupt terminations
+    cleanCellIDs = S(4).IDsofCleanCells;
+    [cellLocs(1),cm(1)]=plotSomaPositions(cleanCellIDs,dataFromCleanCells,D,highlightName,{'ob','MarkerSize',mSize},...
+        {'ob', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize});
+
+    % Plot cells with abrupt terminations
+    details = [dataFromCleanCells.details];
+    details=details(~S(4).cleanCell & S(4).allCells);
+    prematureCellIDs = {details.cellID};
+    [cellLocs(2),cm(2)]=plotSomaPositions(prematureCellIDs,dataFromCleanCells,D,highlightName,{'sb','MarkerSize',mSize+1},...
+          {'sb', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize+1});
+
+
+
+    fprintf('NOT MAKING OUTPUT YET')
+    return
     % Now we make a table that contains the following columns
 
     % 1. Cell ID (string)
@@ -225,24 +231,24 @@ function varargout = clusterPos(cellMat,cleanCells,highlightName)
     hold off
 
 
-function [somaLocations,cellMat] = plotSomaPositions(cellMat,cellData,details,highlightName,allCellsMarker,projectionCellsMarker)
+function [somaLocations,cellMat] = plotSomaPositions(cellIDsToPlot,cellData,projStats,highlightName,allCellsMarker,projectionCellsMarker)
     % return cellMat because some cells might have been removed from it. 
+
+    details=[cellData.details];
 
     cellID = {details.cellID};
 
+    %Make an output array of cells that have been plotted
+    cellMat.id = cellIDsToPlot;
+
     % Find the index for each cell from the manuscript
-    for ii=length(cellMat.id):-1:1
+    for ii=1:length(cellMat.id)
         f = strmatch(cellMat.id{ii},cellID);
 
-        if isempty(f)
-            fprintf('Skipping cell %s: it is present in the matrix from Justus but not in the filtered clean cells array.\n', cellMat.id{ii})
-            cellMat.id(ii)=[];
-            cellMat.mat(ii,:)=[];
+        if ~strcmp(cellData(f).details.cellID, cellMat.id{ii})
+            fprintf('IDs do not match\n')
             continue
         end
-
-        cellMat.ind(ii) = f;
-
         % Soma location in 25 micron voxel units
         cellMat.somaPos{ii} = cellData(f).pointsInARA.rawSparseData.sparsePointMatrix(1,:);
     end
@@ -250,29 +256,34 @@ function [somaLocations,cellMat] = plotSomaPositions(cellMat,cellData,details,hi
     % Plot all cells
     pltDat = reshape([cellMat.somaPos{:}],3,[])';
     plot(pltDat(:,2), pltDat(:,3),allCellsMarker{:})
+    fprintf('Plotted the positions of %d neurons ', size(pltDat,1))
 
     somaLocations.allCells = [(1:length(pltDat))' , pltDat(:,2:3)];
     somaLocations.projectingCells = [];
     somaLocations.pos = pltDat(:,2:3);
     somaLocations.projectingCellID ={};
+
+
     % Find cells that project to the highlighted area and overlay them
     if ~isempty(highlightName)
-        Hind = strmatch(highlightName,cellMat.lab);
+        Hind = strmatch(highlightName,projStats.areaNamesInSamples);
+
         if isempty(Hind)
-            fprintf('Can not find area "%s" in cellmat.lab\n', highlightName)
+            fprintf('Can not find area "%s" in projStats.areaNamesInSamples\n', highlightName)
         else
-            Hcells = find(cellMat.mat(:,Hind)); % Index of cells with projections to this area
-            HcellIDs = cellMat.id(Hcells);      % IDs of cells with projections to this area;
+            Hcells = find(projStats.dataMat(Hind,:)>0); % Index of cells with projections to this area
+            HcellIDs = projStats.cellIDs(Hcells); % IDs of cells with projections to this area
+
             for ii=1:length(HcellIDs)
                 tCell = HcellIDs{ii};
-                f=strmatch(tCell,{details.cellID});
+                f=strmatch(tCell,cellMat.id);
 
                 if isempty(f)
-                    fprintf('Can not find cell %s in array: something is wrong!\n',tCell)
+                    fprintf('Can not find cell %s in  cellMat.id list: something is wrong!\n',tCell)
                     continue
                 end
 
-                tmp = [Hcells(ii),pltDat(Hcells(ii),2:3)];
+                tmp = cellMat.somaPos{f};
                 plot(tmp(:,2), tmp(:,3), projectionCellsMarker{:})
 
                 somaLocations.projectingCells = [somaLocations.projectingCells; tmp];
