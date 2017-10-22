@@ -43,7 +43,7 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
     D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, ...
         'excludeSomataNonV1', false, ...
         'excludeAreas', {'Intercalated amygdalar nucleus','Out of brain','lateral ventricle','Primary visual','Cortical subplate','ventricular systems',t{:}});
-
+    M = D.dataMat;
     M(M<1)=0; % Exclude areas with small lengths
 
     % Find the columns in the matrix that correspond to the premature cells so we can highight these differently
