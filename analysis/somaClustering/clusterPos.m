@@ -33,7 +33,7 @@ function varargout = clusterPos(cleanCells,highlightName)
 
     %Make the projection matrix data
     D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, 'excludeSomataNonV1', true);
-    D.dataMat(D.dataMat<1)==0; %Exclude areas with less than 1 mm of axon
+    D.dataMat(D.dataMat<1)=0; %Exclude areas with less than 1 mm of axon
 
     %The area names and abbreviations:
     [n,c,abrv]=brainAreaNames.visualAreas; 
@@ -147,7 +147,7 @@ function varargout = clusterPos(cleanCells,highlightName)
 
 
     %Remove non-V1 cells
-    S=scc.diagnostic.summariseTerminationTypes(cleanCells,true); %Second element is V1-only
+    S=scc.diagnostic.summariseTerminationTypes(cleanCells,true);
 
 
     %Plot the somata
@@ -156,12 +156,12 @@ function varargout = clusterPos(cleanCells,highlightName)
 
     mSize=12;
 
-    %Plot non-abrupt terminations
+    %Plot non-abrupt terminations of V1 non-back-labelled cells
     cleanCellIDs = S(4).IDsofCleanCells;
     [cellLocs(1),cm(1)]=plotSomaPositions(cleanCellIDs,dataFromCleanCells,D,highlightName,{'ob','MarkerSize',mSize},...
         {'ob', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize});
 
-    % Plot cells with abrupt terminations
+    % Plot cells with abrupt terminations (V1 non-back-labelled cells)
     details = [dataFromCleanCells.details];
     details=details(~S(4).cleanCell & S(4).allCells);
     prematureCellIDs = {details.cellID};
@@ -169,9 +169,6 @@ function varargout = clusterPos(cleanCells,highlightName)
           {'sb', 'MarkerFaceColor', [0.5,0.5,1],'MarkerSize',mSize+1});
 
 
-
-    fprintf('NOT MAKING OUTPUT YET')
-    return
     % Now we make a table that contains the following columns
 
     % 1. Cell ID (string)
@@ -204,8 +201,9 @@ function varargout = clusterPos(cleanCells,highlightName)
 
     %Cells that project to the area in question
     proj = repmat({''},L,1);
+
     if ~isempty(highlightName)
-        projCells = cat(2,cellLocs.projectingCellID)';
+        projCells = cat(1,cellLocs.projectingCellID);
         for ii=1:length(projCells)
             f=find(strcmp(projCells{ii},IDs));
             proj{f} = highlightName;
@@ -246,17 +244,16 @@ function [somaLocations,cellMat] = plotSomaPositions(cellIDsToPlot,cellData,proj
         f = strmatch(cellMat.id{ii},cellID);
 
         if ~strcmp(cellData(f).details.cellID, cellMat.id{ii})
-            fprintf('IDs do not match\n')
+            fprintf('WARNING -- clusterPos>plotSomaPosition -- IDs do not match. Something is wrong.\n')
             continue
         end
-        % Soma location in 25 micron voxel units
+        % The soma position of each cell in the list in 25 micron voxel units
         cellMat.somaPos{ii} = cellData(f).pointsInARA.rawSparseData.sparsePointMatrix(1,:);
     end
 
     % Plot all cells
     pltDat = reshape([cellMat.somaPos{:}],3,[])';
     plot(pltDat(:,2), pltDat(:,3),allCellsMarker{:})
-    fprintf('Plotted the positions of %d neurons ', size(pltDat,1))
 
     somaLocations.allCells = [(1:length(pltDat))' , pltDat(:,2:3)];
     somaLocations.projectingCells = [];
@@ -276,10 +273,9 @@ function [somaLocations,cellMat] = plotSomaPositions(cellIDsToPlot,cellData,proj
 
             for ii=1:length(HcellIDs)
                 tCell = HcellIDs{ii};
-                f=strmatch(tCell,cellMat.id);
+                f = strmatch(tCell,cellMat.id);
 
-                if isempty(f)
-                    fprintf('Can not find cell %s in  cellMat.id list: something is wrong!\n',tCell)
+                if isempty(f) % We will skip some because we cellIDsToPlot will be either premature or non-premature
                     continue
                 end
 
@@ -287,7 +283,8 @@ function [somaLocations,cellMat] = plotSomaPositions(cellIDsToPlot,cellData,proj
                 plot(tmp(:,2), tmp(:,3), projectionCellsMarker{:})
 
                 somaLocations.projectingCells = [somaLocations.projectingCells; tmp];
+                somaLocations.projectingCellID =[somaLocations.projectingCellID; tCell];
             end
-            somaLocations.projectingCellID = HcellIDs;
+
         end
     end

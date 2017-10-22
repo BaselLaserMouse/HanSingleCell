@@ -56,7 +56,7 @@ if nargin<2
     n(n<4)=[];
     errB = containers.Map('KeyType','double','ValueType','any');
     for ii=1:length(n)
-        errB(n(ii))=btstrpErrBar(data{1},n(ii),10E3); % generate a bootstrap chance value for this sample size
+        errB(n(ii))=btstrpErrBar(data{1},n(ii),1E4); % generate a bootstrap chance value for this sample size
     end
 end
 
@@ -94,10 +94,12 @@ for x = 1:length(pltData.all)
     bs = errB(n).R-errB(n).C;
     p=length(find(bs>obs))/length(bs);
 
-    if p<0.025
+    if p==0
+        p=1/length(bs);
+        text(x-0.4, pltData.R(x)+2, 'p<1x10e^{-4}','FontSize',11)
+    elseif p<0.025
         text(x-0.4, pltData.R(x)+2,sprintf('p=%0.4f',p),'FontSize',11)
     end
-
 end
 set(gca,'XTickLabel',pltData.abrvName,'YTick',-20:10:20,...
         'YTickLabel',[20,10,0,10,20],'FontSize',fSize)
@@ -133,8 +135,11 @@ for x = 1:length(pltData.all)
     bs = errB(n).M-errB(n).L;
     p=length(find(bs>obs))/length(bs);
 
-    if p<0.025
-        text(x-0.4,pltData.M(x)+2,sprintf('p=%0.4f',p),'FontSize',11)
+    if p==0
+        p=1/length(bs);
+        text(x-0.4, pltData.R(x)+2,'p<1x10e^{-4}','FontSize',11)
+    elseif p<0.025
+        text(x-0.4, pltData.R(x)+2,sprintf('p=%0.4f',p),'FontSize',11)
     end
 
 end

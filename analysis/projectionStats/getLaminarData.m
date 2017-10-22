@@ -39,8 +39,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
 
 
     %Find the area 
-    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, ...
-        'excludeSomataNonV1', true);
+    D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, 'excludeSomataNonV1', true);
     M = D.dataMat;
     M(M<1)=0; % Exclude areas with less than 1 mm of axon
 
@@ -58,7 +57,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     [childAreas,parentInd] = getChildAreas(areaName);
     data = cleanCells.returnData('excludeBorders',2);
     details = [data.details];
-    cellIDs = {details.cellID};
+    cellIDs = {details.cellID}
     thisCellID={};
 
     COUNTS=[];
