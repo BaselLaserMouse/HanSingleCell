@@ -1,14 +1,10 @@
-function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotNonV1)
+function varargout = projectionDensity(cleanCells,areaMap,plotPrem,plotNonV1)
     % Address whether the total length of axon scales with the number of target brain ares
     %
     % function varargout = projectionDensity(cellMat,cleanCells,areaMap)
     %
     %
     % Inputs
-    % cellMat - the binary matrices and associated labels from Justus packages in structure.
-    %           if the structure is of length 2 then we assume the first index contains
-    %           the "good" cells from the main paper and the second index the premature
-    %           cells.
     % cleanCells - Xylem data structure containing the selected good cells (e.g. no crappy 
     %              ones where the brain was falling apart)
     % areaMap - is made by makeAreaMap
@@ -17,26 +13,17 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
     %
     % e.g.
     % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
-    % >> load allCellMat.mat
     % >> load areaMap
-    % >> projectionDensity(allCellMat,cleanCells,m)
+    % >> projectionDensity(cleanCells,m)
     %
 
-    if nargin<4
+    if nargin<3
         plotPrem=false;
     end
 
-    if nargin<5
+    if nargin<4
         plotNonV1=false;
     end
-
-    % Get the length of axon for each neuron in the cellMat array
-
-    cellMat(1).totalDistance=[];
-    for ii=1:length(cellMat)
-        cellMat(ii) = getAxonLength(cellMat(ii), cleanCells);
-    end
-
 
     clf
     [~,t]=aratools.utils.whiteMatterInds;
@@ -46,26 +33,28 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
     M = D.dataMat;
     M(M<1)=0; % Exclude areas with small lengths
 
-    % Find the columns in the matrix that correspond to the premature cells so we can highight these differently
-    premInd = zeros(1,size(M,2),'logical');
-    for ii=1:length(premInd)
-        if ~isempty(strmatch(D.cellIDs{ii},cellMat(2).id))
+    S=scc.diagnostic.summariseTerminationTypes(cleanCells,true);
+
+    Rdata = cleanCells.returnData;
+    details = [Rdata.details];
+    allCellIDs = {details.cellID};
+
+    % Find the columns in the matrix that correspond to the premature cells so we can highlight these differently
+    premIDs = allCellIDs(~S(4).cleanCell & S(4).allCells);
+    premInd = zeros(1,length(D.cellIDs), 'logical');
+    for ii=1:length(D.cellIDs)
+        if ~isempty(strmatch(D.cellIDs{ii}, premIDs))
             premInd(ii) = true;
         end
     end
 
+    %These are the clean V1 non-backlabelled neurons
+    cleanV1ind = S(4).indexValuesOfcleanCells;
+    cleanV1s = S(4).IDsofCleanCells;
+
     % Find the columns in the matrix that correspond to non-V1 cells so we can highlight these differently 
-    nonV1ind = zeros(1,size(M,2),'logical');
-    SS=scc.diagnostic.summariseTerminationTypes(cleanCells,true);
-    nonV1CellIDs = SS(5).IDsOfAllCells;
-
-    for ii=1:length(nonV1ind)
-        if ~isempty(strmatch(D.cellIDs{ii},nonV1CellIDs));
-            nonV1ind(ii) = true;
-        end
-    end
-
-    cleanV1ind = ~nonV1ind & ~premInd;
+    nonV1ind = S(5).indexValuesOfAllCells;
+    nonV1CellIDs = S(5).IDsOfAllCells;
 
     % Define marker styles
     cleanMrkr = {'ob', 'MarkerFaceColor', [0.5,0.5,1.0],'markersize',8};
@@ -88,15 +77,15 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
 
     %Add non-V1 cells (non-premature)
     if plotNonV1
-        tmp = M(:,SS(5).indexValuesOfcleanCells);
-        fprintf('%d non-v1 premature non-premature cells\n', length(SS(5).indexValuesOfcleanCells))
+        tmp = M(:,S(5).indexValuesOfcleanCells);
+        fprintf('%d non-v1 premature non-premature cells\n', length(S(5).indexValuesOfcleanCells))
         plot(sum(tmp>0), sum(tmp), cleanMrkr{:}, nonV1mrkr{:});
     end
 
 
     %Add non-V1 cells (premature)
     if plotNonV1 && plotPrem
-        tInd = setxor(SS(5).indexValuesOfcleanCells,SS(5).indexValuesOfAllCells);
+        tInd = setxor(S(5).indexValuesOfcleanCells,S(5).indexValuesOfAllCells);
         tmp = M(:,tInd);
         fprintf('%d non-v1 non-premature cells\n', length(tInd))
         plot(sum(tmp>0), sum(tmp), prematureMrkr{:}, nonV1mrkr{:});
@@ -194,9 +183,9 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
 
     %Work with V1 only no backlabelled cells. Both premature and non-premature: 
     if plotPrem
-        mTMP = M(:,SS(4).indexValuesOfAllCells);
+        mTMP = M(:,S(4).indexValuesOfAllCells);
     else
-        mTMP = M(:,SS(4).indexValuesOfcleanCells);
+        mTMP = M(:,S(4).indexValuesOfcleanCells);
     end
     for ii=1:length(areasToPlot)
         ind=strmatch(areasToPlot{ii},D.areaNamesInSamples); % Row with connections to this are
@@ -220,12 +209,4 @@ function varargout = projectionDensity(cellMat,cleanCells,areaMap,plotPrem,plotN
         varargout{1} = cellMat;
     end
 
-function C = getAxonLength(C,cleanCells)
-     D = cleanCells.returnData;
-     details = [D.details];
-     cellIDs = {details.cellID};
-
-     for ii=1:length(C.id)
-         ind = strmatch(C.id{ii}, cellIDs);
-         C.totalDistance(ii) = D(ind).totalDistance;
-     end
+    set(gcf,'PaperPosition',[0,0,40,40])
