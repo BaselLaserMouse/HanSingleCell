@@ -68,23 +68,23 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
 
 
     %Work on one hemisphere only 
-    atlasVol(:,1:round(size(atlasVol,2)/2),:)=[];
+    atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
 
     mask = (atlasVol==areaInd);
 
 
 
     % Keep the surface of the area
-    d=mask-circshift(mask,1,1);
+    d=mask-circshift(mask,2,1);
     d(d<1)=0;
 
     %Now get the coordinates of these points
     f=find(d>0);
     [DV,ML,RC]=ind2sub(size(d),f);
 
-    %DV - dorso-ventral
-    %ML - medio-lateral
-    %RC - rostrocaudal
+    %DV: dorso-ventral
+    %ML: medio-lateral
+    %RC: rostrocaudal
 
 
     clf
@@ -105,25 +105,28 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
     title(['Estimated surface of area ', structureID2name(areaInd)])
 
     %Now we fit a surface around the mean by predicting the DV position based on ML and RC
-    %dv = DV-mean(DV);
-    %ml = ML-mean(ML);
-    %rc = RC-mean(RC);
+    %Do so by placing the intercept at the geometric centre of the area being fitted
+    dv = DV-mean(DV);
+    ml = ML-mean(ML);
+    rc = RC-mean(RC);
 
 
-    X = [ones(size(DV)) ML RC ML.^2 RC.^2 ML.^3 RC.^3];
-    [b,BINT,R] = regress(DV,X);
+    X = [ones(size(DV)) ml rc ml.^2 rc.^2 ml.^3 rc.^3];
+    X = [ones(size(DV)) ml rc ml.^2 rc.^2];
+    [b,BINT,R] = regress(dv,X);
 
 
     fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
+    fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
     % The fitted surface
     subplot(2,2,2)
-    scatter3(ML,RC,DV,'filled')
+    scatter3(ml,rc,dv,'filled')
     hold on
-    x1fit = min(ML):1:max(ML);
-    x2fit = min(RC):1:max(RC);
+    x1fit = 2*min(ml):1:max(ml)*2;
+    x2fit = min(rc):1:max(rc);
     [X1FIT,X2FIT] = meshgrid(x1fit,x2fit);
-    YFIT = b(1) + b(2)*X1FIT + b(3)*X2FIT + b(4)*X1FIT.^2 + b(5)*X2FIT.^2 + b(6)*X1FIT.^3 + b(7)*X2FIT.^3;
+    
     YFIT = fitfunc(X1FIT, X2FIT, b);
     M=mesh(X1FIT,X2FIT,YFIT);
     xlabel('ML'), ylabel('RC'), zlabel('DV')
@@ -133,9 +136,9 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
     % Subtract the fit from the surface (the residuals if we have just one layer)
     subplot(2,2,3)
 
-    DVfit = fitfunc(ML,RC,b);% b(1) + b(2)*ML + b(3)*RC + b(4)*ML.^2 + b(5)*RC.^2 + b(6)*ML.^3 + b(7)*RC.^3;
+    DVfit = fitfunc(ml,rc,b);% b(1) + b(2)*ML + b(3)*RC + b(4)*ML.^2 + b(5)*RC.^2 + b(6)*ML.^3 + b(7)*RC.^3;
 
-    plot3(ML,RC,DV-DVfit,'r*')
+    plot3(ml,rc,dv-DVfit,'r*')
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal
     box on, grid on
