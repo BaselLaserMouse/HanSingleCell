@@ -1,18 +1,26 @@
-function varargout = fitAreaPlane(areaInd,atlasVol)
+function varargout = fitAreaPlane(areaInd,atlasVol,E)
     % Fit a plane to a named brain area
     %
     % function fitStats = fitAreaPlane(areaInd,atlasVol)
     %
     % Purpose
-    % Fit plane to brain area surface and return fit paramaters.
-    % This can be used to "straighten" an area for plotting.
+    % We want to make nice laminar plots of axons in a particular brain area, however
+    % the brain surface is curved. So we want to be able to "look" in a direction
+    % orthogonal to the cortical layers. We also want to subtract any local curvature. 
+    % This function performs these operations using the following steps:
+    % 1) Find the geometric centre of L1 of the cortical area in question.
+    % 2) Make the area parallel to the plot axes by rotating it around this point using 
+    %    an affine transformation. 
+    % 3) Fit a 2-D curve to the surface to remove gross local distortion. 
+    % 
+    % These operations can be applied to points, but they will need to be applied in order.
     % 
     %
     % Inputs
     % areaInd - The brain area to fit. Can be one of the following:
     %          a) Name of a cortical area. e.g. `Primary visual area'
     %          b) Index of a cortical area. e.g. 385  (which is V1)
-    %          c) Index of a layer in a cortica area. e.g. 33 (which is V1 L6a)
+    %          c) Index of a layer in a cortical area. e.g. 33 (which is V1 L6a)
     %
     %          If the user supplies (c), the surface of this is fitted and the parameters
     %          returned. If the user supplies (a) or (b) then the functions finds L1 and 
@@ -20,6 +28,8 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
     % atlasVol - optional. By default the ARA is pulled in using aratools.atlascacher.getCachedAtlas
     %          You can also supply either this structure or the array manually using this argument.
     %          This should be a bit faster.
+    % E - canny edge detected version of the atlas. do: E=canny(atlasVol);
+    %
     %
     %  TODO: decide how to handle the hemispheres: fit both or just one? They should be the same
     %        with opposite signs for the ML slope parameters...
@@ -67,11 +77,11 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
 
 
 
-    %Work on one hemisphere only 
+    %Work only on the hemisphere where we have acquired data
     atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
+    E(:,1:round(size(atlasVol,2)/2),:)=0;
 
     mask = (atlasVol==areaInd);
-
 
 
     % Keep the surface of the area
@@ -81,50 +91,81 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
     %Now get the coordinates of these points
     f=find(d>0);
     [DV,ML,RC]=ind2sub(size(d),f);
-
     %DV: dorso-ventral
     %ML: medio-lateral
     %RC: rostrocaudal
 
+    ef=find(E==1);
+    [DVe,MLe,RCe]=ind2sub(size(E),ef(1:5:end));
+
+
 
     clf
-
-    %subplot(2,2,1), imagesc(squeeze( sum(d,1)) )
-    %subplot(2,2,2), imagesc(squeeze( sum(d,3)) )
-    
-
-    % The extracted surface points
     subplot(2,2,1)
+    plot3(MLe,RCe,DVe,'.k') %whole brain
 
-    plot3(ML,RC,DV,'.', 'Color', [0,0,0.33])
+    hold on
+    plot3(ML,RC,DV,'.', 'Color', [1,0,0.33]) %Selected area
+
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal 
     hold on
     plot3(mean(ML),  mean(RC), mean(DV), 'or', 'MarkerFaceColor', 'r')
     axis ij, box on, grid on
     title(['Estimated surface of area ', structureID2name(areaInd)])
+    ylim([100,300])
 
-    %Now we fit a surface around the mean by predicting the DV position based on ML and RC
-    %Do so by placing the intercept at the geometric centre of the area being fitted
+    %Now we centre around the mean and we'll perform all transformations around this
     dv = DV-mean(DV);
     ml = ML-mean(ML);
     rc = RC-mean(RC);
 
+    dvE = DVe-mean(DV);
+    mlE = MLe-mean(ML);
+    rcE = RCe-mean(RC);
 
-    X = [ones(size(DV)) ml rc ml.^2 rc.^2 ml.^3 rc.^3];
-    X = [ones(size(DV)) ml rc ml.^2 rc.^2];
-    [b,BINT,R] = regress(dv,X);
+
+    % DV is the dorso-ventral position that we want to "straighten"
+    % Now we make the appropriate matrices to feed absor
+    orig = [ml,rc,dv]';
+    origE = [mlE,rcE,dvE]';
+    target = orig; target(3,:)=0;
+    affineStats = absor(orig,target);
+
+
+    % Apply the transformation
+    subplot(2,2,2)
+    affineTransformed = applyAffineTransform(orig,affineStats,target);
+    affineTransformedE = applyAffineTransform(origE,affineStats,[],false);
+    title('Result of affine transform')
+
+    % Now we attempt to correct for surface curvature 
+    mlAT = affineTransformed(1,:)';
+    rcAT = affineTransformed(2,:)';
+    dvAT = affineTransformed(3,:)';
+
+    mlATE = affineTransformedE(1,:)';
+    rcATE = affineTransformedE(2,:)';
+    dvATE = affineTransformedE(3,:)';
+
+    X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2 mlAT.^3 rcAT.^3];
+    %X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2];
+    [b,BINT,R] = regress(dvAT,X);
 
 
     fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
-    fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
+    %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
     % The fitted surface
-    subplot(2,2,2)
-    scatter3(ml,rc,dv,'filled')
+    subplot(2,2,3)
+    scatter3(mlAT,rcAT,dvAT,'filled')
     hold on
-    x1fit = 2*min(ml):1:max(ml)*2;
-    x2fit = min(rc):1:max(rc);
+    plot3(mlATE,rcATE,dvATE,'.k')
+
+
+
+    x1fit = 1.5*min(ml):1:max(ml)*1.5;
+    x2fit = 1.5*min(rc):1:max(rc)*1.5;
     [X1FIT,X2FIT] = meshgrid(x1fit,x2fit);
     
     YFIT = fitfunc(X1FIT, X2FIT, b);
@@ -132,13 +173,15 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal
     title('Fit to brain area surface')
+    ylim([-75,100])
+    zlim([-10,100])
 
     % Subtract the fit from the surface (the residuals if we have just one layer)
-    subplot(2,2,3)
+    subplot(2,2,4)
 
-    DVfit = fitfunc(ml,rc,b);% b(1) + b(2)*ML + b(3)*RC + b(4)*ML.^2 + b(5)*RC.^2 + b(6)*ML.^3 + b(7)*RC.^3;
+    DVfit = fitfunc(mlAT,rcAT,b);
 
-    plot3(ml,rc,dv-DVfit,'r*')
+    plot3(mlAT,rcAT,dvAT-DVfit,'r.')
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal
     box on, grid on
@@ -153,5 +196,6 @@ function varargout = fitAreaPlane(areaInd,atlasVol)
         stats.mu.ml = mean(ML);
         stats.mu.rc = mean(RC);
         stats.fitfunc = fitfunc;
+        stats.affine = affineStats;
         varargout{1}=stats;
     end

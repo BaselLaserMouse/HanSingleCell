@@ -56,30 +56,30 @@ function varargout = arborPlot(laminarData,cleanCells,cleanOnly,indToPlot,stats)
         details = [c.details];
         cellIDs = {details.cellID};
 
-        subplot(2,2,1)
+        subplot(1,2,1)
         hold on
         for ii=1:length(tCells)
             ind=strmatch(tCells{ii},cellIDs);
             plotTree(c(ind),tData,stats,2);
         end
 
-        title(tData.areaName)
+        title([tData.areaName, ' (coronal)'])
         axis ij equal
         drawnow 
 
 
-        subplot(2,2,2)
+        subplot(1,2,2)
         hold on
         for ii=1:length(tCells)
             ind=strmatch(tCells{ii},cellIDs);
             plotTree(c(ind),tData,stats,1);
         end
 
-        title(tData.areaName)
+        title([tData.areaName, ' (sagittal)'])
         axis ij equal
         drawnow
 
-
+return
         subplot(2,2,3)
         hold on
         for ii=1:length(tCells)
@@ -129,11 +129,7 @@ function varargout = arborPlot(laminarData,cleanCells,cleanOnly,indToPlot,stats)
             %theseData(f,:) = nan;
 
             if ~isempty(stats)
-                theseData(:,2) = theseData(:,2) - stats.mu.ml;
-                theseData(:,3) = theseData(:,3) - stats.mu.dv;
-                theseData(:,1) = theseData(:,1) - stats.mu.rc;
-                fittedValues = stats.fitfunc(theseData(:,2),theseData(:,1), stats.b);
-                theseData(:,3) = theseData(:,3) - fittedValues;
+                theseData = applyTranform(theseData,stats);
             end
 
             if dimPlot>0
@@ -143,8 +139,31 @@ function varargout = arborPlot(laminarData,cleanCells,cleanOnly,indToPlot,stats)
                 h(ii)=plot3(theseData(:,1), theseData(:,2), theseData(:,3), '-', ...
                     'linewidth',0.5, 'Color', tColor);
                 if ~isempty(stats)
-                    h(ii)=plot3(theseData(:,1), theseData(:,2), fittedValues, '.r', ...
-                    'linewidth',0.5, 'Color', tColor);
+                %    h(ii)=plot3(theseData(:,1), theseData(:,2), fittedValues, '.r', ...
+                 %   'linewidth',0.5, 'Color', tColor);
                 end
             end
-        end
+        end % for ii=...
+
+    function transformedValues = applyTranform(points,stats)
+        
+        %Subtract the offset
+        points(:,2) = points(:,2) - stats.mu.ml;
+        points(:,3) = points(:,3) - stats.mu.dv;
+        points(:,1) = points(:,1) - stats.mu.rc;
+
+        %Apply the affine tranform (ordered ml, rc, dv)
+        tPoints = points(:,[2,1,3])';
+        affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
+
+        transformedValues = affineTransformedPoints([2,1,3],:)'; %Flip back the dimensions to keep things consistent here
+
+        % Now subtract the curviture of the surface from the DV values
+        fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
+        %transformedValues(:,3) = transformedValues(:,3)-fittedValues;
+
+
+
+
+
+
