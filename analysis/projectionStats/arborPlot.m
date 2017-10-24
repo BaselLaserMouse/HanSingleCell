@@ -146,7 +146,6 @@ return
         end % for ii=...
 
     function transformedValues = applyTranform(points,stats)
-        
         %Subtract the offset
         points(:,2) = points(:,2) - stats.mu.ml;
         points(:,3) = points(:,3) - stats.mu.dv;
@@ -161,4 +160,5 @@ return
         % Now subtract the curviture of the surface from the DV values
         fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
         transformedValues(:,3) = transformedValues(:,3)-fittedValues;
+
 

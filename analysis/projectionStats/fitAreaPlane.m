@@ -61,6 +61,8 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
 
             fprintf('Fitting %s\n', childTable.name{f});
             areaInd = childTable.id(f);
+
+
         end % close size(childTable,1)>1
 
     end % nargin<1 || isempty(areaInd)
@@ -80,20 +82,31 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     %Work only on the hemisphere where we have acquired data
     atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
     E(:,1:round(size(atlasVol,2)/2),:)=0;
-    E(E>0)=1;
 
-    mask = (atlasVol==areaInd);
+    % DIM FLIP
+    %atlasVol = permute(atlasVol,[3,2,1]);
+    %E = permute(E,[3,2,1]);
 
-    %Now get the coordinates of these points
-    f=find(mask+E == 2);
-    [DV,ML,RC]=ind2sub(size(mask),f);
-    %DV: dorso-ventral
-    %ML: medio-lateral
-    %RC: rostrocaudal
-
+    %Find the surface points
     ef=find(E==1);
     [DVe,MLe,RCe]=ind2sub(size(E),ef(1:5:end));
 
+
+
+    mask = (atlasVol==areaInd); 
+
+
+    %Now get the coordinates of these points
+    f=find(mask+E == 2);
+    %DV: dorso-ventral, ML: medio-lateral, RC: rostrocaudal
+    [DV,ML,RC] = getAreaSurfacePixels(atlasVol,E,areaInd);
+
+    %Get the coords of all the layers
+    for ii=1:length(childTable.name)
+        layerCoords(ii).name = childTable.name{ii};
+        layerCoords(ii).id = childTable.id(ii);
+        [layerCoords(ii).DV, layerCoords(ii).ML, layerCoords(ii).RC] = getAreaSurfacePixels(atlasVol,E,childTable.id(ii));
+    end
 
 
     clf
@@ -109,7 +122,14 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     plot3(mean(ML),  mean(RC), mean(DV), 'or', 'MarkerFaceColor', 'r')
     axis ij, box on, grid on
     title(['Estimated surface of area ', structureID2name(areaInd)])
-    ylim([100,300])
+    %ylim([100,300])
+
+    %Add a plane to indicate the surface we try to register to
+    xl=xlim;
+    yl=ylim;
+    ptch=patch([xl(1),xl(2),xl(2),xl(1)], ....
+        [yl(1),yl(1),yl(2),yl(2)], 1);
+    set(ptch,'FaceColor','b','FaceAlpha',0.25)
 
     %Now we centre around the mean and we'll perform all transformations around this
     dv = DV-mean(DV);
@@ -145,33 +165,32 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     dvATE = affineTransformedE(3,:)';
 
     X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2 mlAT.^3 rcAT.^3];
-    %X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2];
+    X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2];
     [b,BINT,R] = regress(dvAT,X);
 
 
 
     fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
-    %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
+    fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
     % The fitted surface
     subplot(2,2,3)
-    scatter3(mlAT,rcAT,dvAT,'filled')
-    hold on
     plot3(mlATE,rcATE,dvATE,'.k')
-
+    hold on
+    plot3(mlAT,rcAT,dvAT,'.r')
 
 
     x1fit = 1.5*min(ml):1:max(ml)*1.5;
     x2fit = 1.5*min(rc):1:max(rc)*1.5;
     [X1FIT,X2FIT] = meshgrid(x1fit,x2fit);
-    
+
     YFIT = fitfunc(X1FIT, X2FIT, b);
     M=mesh(X1FIT,X2FIT,YFIT);
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal
     title('Fit to brain area surface')
-    ylim([-75,100])
-    zlim([-10,100])
+    %ylim([-75,100])
+    zlim([-20,100])
 
     % Subtract the fit from the surface (the residuals if we have just one layer)
     subplot(2,2,4)
@@ -196,5 +215,24 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
         stats.affine = affineStats;
         stats.areaInd = areaInd;
         stats.areaName = structureID2name(areaInd);
+        stats.layers = layerCoords;
         varargout{1}=stats;
+
     end
+
+
+
+
+function [DV,ML,RC] = getAreaSurfacePixels(atlasVol,E,areaInd)
+    %DV: dorso-ventral
+    %ML: medio-lateral
+    %RC: rostrocaudal
+
+    mask = (atlasVol==areaInd); 
+    %Now get the coordinates of these points
+    f=find(mask+E == 2);
+    [DV,ML,RC]=ind2sub(size(mask),f);
+    %DV: dorso-ventral
+    %ML: medio-lateral
+    %RC: rostrocaudal
+
