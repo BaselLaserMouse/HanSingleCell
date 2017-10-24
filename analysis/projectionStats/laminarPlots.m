@@ -48,7 +48,11 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
 
     c=get(gcf,'children');
     yl=[];
-    for ii=1:length(c)
+    for ii=length(c):-1:1
+        if ~strcmp(c(ii).Type,'axes')
+            c(ii)=[];
+            continue
+        end
         tmp = c(ii).YLim;
         yl = [yl;tmp];
     end

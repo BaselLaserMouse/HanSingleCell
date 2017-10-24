@@ -80,17 +80,13 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     %Work only on the hemisphere where we have acquired data
     atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
     E(:,1:round(size(atlasVol,2)/2),:)=0;
+    E(E>0)=1;
 
     mask = (atlasVol==areaInd);
 
-
-    % Keep the surface of the area
-    d=mask-circshift(mask,2,1);
-    d(d<1)=0;
-
     %Now get the coordinates of these points
-    f=find(d>0);
-    [DV,ML,RC]=ind2sub(size(d),f);
+    f=find(mask+E == 2);
+    [DV,ML,RC]=ind2sub(size(mask),f);
     %DV: dorso-ventral
     %ML: medio-lateral
     %RC: rostrocaudal
@@ -153,6 +149,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     [b,BINT,R] = regress(dvAT,X);
 
 
+
     fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
     %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
@@ -197,5 +194,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
         stats.mu.rc = mean(RC);
         stats.fitfunc = fitfunc;
         stats.affine = affineStats;
+        stats.areaInd = areaInd;
+        stats.areaName = structureID2name(areaInd);
         varargout{1}=stats;
     end

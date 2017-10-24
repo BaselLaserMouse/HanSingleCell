@@ -160,10 +160,5 @@ return
 
         % Now subtract the curviture of the surface from the DV values
         fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
-        %transformedValues(:,3) = transformedValues(:,3)-fittedValues;
-
-
-
-
-
+        transformedValues(:,3) = transformedValues(:,3)-fittedValues;
 
