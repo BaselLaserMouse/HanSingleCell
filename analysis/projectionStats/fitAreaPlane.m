@@ -31,8 +31,10 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     % E - canny edge detected version of the atlas. do: E=canny(atlasVol);
     %
     %
-    %  TODO: decide how to handle the hemispheres: fit both or just one? They should be the same
-    %        with opposite signs for the ML slope parameters...
+    % To get all:
+    % >> v=brainAreaNames.visualAreas
+    % >> for ii=1:11; disp(ii), areaFits{ii}=fitAreaPlane(v{ii},LOADED_ARA,E); end
+
 
 
     if nargin<1 || isempty(areaInd)
