@@ -48,7 +48,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
             %Find L1 or quit
             f=find(...
                 cell2mat(...
-                    cellfun(@(x) ~isempty(regexp(x,'.*, [Ll]ayer 1')) , childTable.name, 'UniformOutput', false)...
+                    cellfun(@(x) ~isempty(regexp(x,'.*, [Ll]ayer 1','Once')) , childTable.name, 'UniformOutput', false)...
                     )...
                 );
             if isempty(f)
@@ -79,9 +79,11 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
 
 
 
-    %Work only on the hemisphere where we have acquired data
-    atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
-    E(:,1:round(size(atlasVol,2)/2),:)=0;
+    %Work only on the caudal part of the hemisphere where we have acquired data
+    atlasVol(1:300,1:round(size(atlasVol,2)/2),:)=0;
+    E(1:300,1:round(size(atlasVol,2)/2),:)=0;
+
+
 
     % DIM FLIP
     %atlasVol = permute(atlasVol,[3,2,1]);
@@ -102,10 +104,24 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     [DV,ML,RC] = getAreaSurfacePixels(atlasVol,E,areaInd);
 
     %Get the coords of all the layers
-    for ii=1:length(childTable.name)
+    [~,sortInd] = sort(childTable.name);
+    childTable = childTable(sortInd,:);
+    tMask = atlasVol;
+    for ii=1:length(childTable.name)-1
         layerCoords(ii).name = childTable.name{ii};
         layerCoords(ii).id = childTable.id(ii);
-        [layerCoords(ii).DV, layerCoords(ii).ML, layerCoords(ii).RC] = getAreaSurfacePixels(atlasVol,E,childTable.id(ii));
+        if ii>1
+            tMask(tMask==layerCoords(ii).id)=0;
+        end
+        fprintf('Calculating layer: %s...', childTable.name{ii})
+
+        cT=tMask;
+        cT(cT>0)=1;
+        cT=canny(cT);
+
+        [layerCoords(ii).DV, layerCoords(ii).ML, layerCoords(ii).RC] = ...
+            getAreaSurfacePixels(atlasVol,cT,childTable.id(ii+1));
+        fprintf(' done layer\n')
     end
 
 
@@ -164,13 +180,13 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     rcATE = affineTransformedE(2,:)';
     dvATE = affineTransformedE(3,:)';
 
-    X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2 mlAT.^3 rcAT.^3];
+    %X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2 mlAT.^3 rcAT.^3];
     X = [ones(size(DV)) mlAT rcAT mlAT.^2 rcAT.^2];
-    [b,BINT,R] = regress(dvAT,X);
+    [b,~,R] = regress(dvAT,X);
 
 
 
-    fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
+    %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
     fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
     % The fitted surface
@@ -185,7 +201,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     [X1FIT,X2FIT] = meshgrid(x1fit,x2fit);
 
     YFIT = fitfunc(X1FIT, X2FIT, b);
-    M=mesh(X1FIT,X2FIT,YFIT);
+    mesh(X1FIT,X2FIT,YFIT);
     xlabel('ML'), ylabel('RC'), zlabel('DV')
     axis equal
     title('Fit to brain area surface')
@@ -203,7 +219,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     box on, grid on
 
     title('Fit to brain area surface')
-
+    drawnow
 
     if nargout>0
         stats.b = b;
