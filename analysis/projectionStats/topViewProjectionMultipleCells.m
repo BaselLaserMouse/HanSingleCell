@@ -88,7 +88,7 @@ function varargout=topViewProjectionMultipleCells(X,laminarData)
 
 
 
-    set(gcf,'PaperPosition',[0,0,30,40])
+    set(gcf,'PaperPosition',[0,0,20,20])
 
     if nargout>0
         varargout{1}=H;

@@ -1,7 +1,7 @@
-function varargout = getLaminarData(cleanCells,areaName,atlas)
+function varargout = getLaminarData(cleanCells,areaName,atlas,dataMetric)
     % Obtain distributions of terminals by layer within a subset of defined areas
     %
-    % out = getLaminarData(cleanCells,areaName,atlas)
+    % out = getLaminarData(cleanCells,areaName,atlas,dataMetric)
     %
     % Find the distribution of axon in a named target area and return as a structure.
     %
@@ -22,26 +22,40 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     %
     % >> visNames=brainAreaNames.visualAreas;
     % >> clear OUT
-    % >> aratools.cacheAtlasToWorkSpace(25); 
-    % for ii=1:length(visNames); OUT(ii)=getLaminarData(cleanCells,visNames{ii}, LOADED_ARA); end
+    % parfor ii=1:length(visNames); disp(ii), OUT(ii)=getLaminarData(cleanCells,visNames{ii}, LOADED_ARA); end
     %
-
+    %
+    % Rob Campbell - Basel 2017
 
 
     if nargin<2 || isempty(areaName)
         areaName = 'Lateral visual area';
     end
 
-    if nargin<3
+    if nargin<3 || isempty(atlas)
         atlas = aratools.atlascacher.getCachedAtlas;
+    end
+
+    if nargin<4 
+        dataMetric = 'upSampledPoints';
     end
 
 
 
-    %Find the area 
+
+
+    %Find which cells project where and remove all projections with under 1 mm of axon
     D=pointsByAreaPlot(cleanCells,'dataMetric', 'upSampledPoints', 'excludeBorders', 2, 'excludeSomataNonV1', true);
     M = D.dataMat;
     M(M<1)=0; % Exclude areas with less than 1 mm of axon
+
+    %If user asked for leaves we re-do and filter the matrix by M, above
+    if strcmp(dataMetric,'leaves')
+        D=pointsByAreaPlot(cleanCells,'dataMetric', 'leaves', 'excludeBorders', 2, 'excludeSomataNonV1', true);
+        M(M>0)=0; %We will filter by this
+        M = D.dataMat .* M;
+    end
+
 
     % Find cells projecting to the area in question 
     ind=strmatch(areaName,D.areaNamesInSamples);
@@ -57,7 +71,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     [childAreas,parentInd] = getChildAreas(areaName);
     data = cleanCells.returnData('excludeBorders',2);
     details = [data.details];
-    cellIDs = {details.cellID}
+    cellIDs = {details.cellID};
     thisCellID={};
 
     COUNTS=[];
@@ -65,7 +79,6 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
     traceFiles = {}; %The location of the raw data file
     for ii=1:length(thisArea)
         thisCell = D.cellIDs{thisArea(ii)};
-
         thisInd = strmatch(thisCell,cellIDs);
         theseData = data(thisInd);
         traceFiles{ii} = theseData.pointsFname;
@@ -82,6 +95,7 @@ function varargout = getLaminarData(cleanCells,areaName,atlas)
         out.cellID = thisCellID;
         out.planesInARA = unique(PLANES);
         out.traceFiles=traceFiles;
+        out.dataMetric=dataMetric;
         varargout{1}=out;
     end
 

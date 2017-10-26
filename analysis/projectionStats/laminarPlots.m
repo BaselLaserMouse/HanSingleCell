@@ -1,18 +1,15 @@
-function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
+function varargout = laminarPlots(laminarData,cleanCells)
     % Plot distribution of terminals by layer within a subset of defined areas
     %
-    % out = laminarPlots(laminarData,cleanCells,cleanOnly)
+    % out = laminarPlots(laminarData,cleanCells)
     %
     %
     % Inputs
-    % laminarData - see below
     % cleanCells - xylem structure
-    % cleanOnly - false by default
+    % laminarData - produced by getLaminarData
+    %
 
-    if nargin<3
-        cleanOnly=false;
-    end
-
+    cleanOnly=false;
     if cleanOnly
         % Filter neurons by premature/not 
         s=scc.diagnostic.summariseTerminationTypes(cleanCells,true);
@@ -42,9 +39,7 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
     doBoxPlots
     %doLinePlots
 
-
-    
-    labelEdgeSubPlots('Layer','axon length') 
+    labelEdgeSubPlots('Layer','axon length/layer cross-section area') 
 
     c=get(gcf,'children');
     yl=[];
@@ -76,7 +71,7 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
                 continue
             end
 
-            subplot(3,3,n)
+            subplot(3,4,n)
 
             tmp = squeeze(laminarData(ii).counts(:,2,:));
             plot(tmp)
@@ -97,10 +92,11 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
 
 
 
-    function doBoxPlots
+    function doBoxPlots(rowToPlot)
         % Make notBoxPlots. One per layer
         clf
         n=1;
+
         for ii=1:length(laminarData)
 
 
@@ -109,31 +105,50 @@ function varargout = laminarPlots(laminarData,cleanCells,cleanOnly)
                 continue
             end
             if size(laminarData(ii).counts,3)<3
-                fprintf('Skipping  area %s with only %disp cells\n', laminarData(ii).areaName, ...
-                    size(laminarData(ii).counts,3)<3)
+                if size(laminarData(ii).counts,3)==1
+                    plural='';
+                else
+                    plural='s';
+                end
+                    
+                fprintf('Skipping "%s" with only %d cell%s.\n', laminarData(ii).areaName, ...
+                    size(laminarData(ii).counts,3)<3, plural)
                 continue
             end
 
-            subplot(3,3,n)
+            subplot(4,4,n)
             counts = squeeze(laminarData(ii).counts(:,3,:))';
             counts = single(counts);
 
+            % Because we will group layer 6a and 6ba
+            if size(counts,2)~=6
+                fprintf('Skipping "%s" where only %d layers have been extracted.\n', laminarData(ii).areaName, ...
+                    size(counts,2))
+                continue
+            end
+
+            counts(:,5) = counts(:,5) + counts(:,6); counts(:,6)=[];
+
             vol = squeeze(laminarData(ii).counts(:,2,:))';
             vol = single(vol);
-            vol = vol/length(laminarData(ii).planesInARA);
+            vol(:,5) = vol(:,5) + vol(:,6); vol(:,6)=[];
+            vol = vol/length(laminarData(ii).planesInARA); %2D layer area
 
-            counts = counts*5; % TODO - should be correct but check
-            if ~isvector(counts)
-                notBoxPlot(counts./vol)
+            if 1
+                plotData = counts./vol; %Calculate the density 
             else
-                plot(counts,'ok-')
+                plotData = counts;
             end
+            H=notBoxPlot(plotData);
+            set([H.data],'MarkerSize',3)
+
             title( sprintf('%s (%d cells)',...
                 laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
 
             % Make nice x axis labels
             lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);
-            set(gca,'XTickLabel',lab)
+            lab{5} = '6';
+            set(gca,'XTickLabel',lab(1:5))
             n=n+1;
             %ylim([-100,4E3])
         end
