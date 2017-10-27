@@ -144,9 +144,10 @@ function [out,planesWithAxonInThisArea]=countsInLayers(theseData,childAreas,pare
         allCounts(ii) = counts(f);
 
     end
-    
+
     out = [allLayerIDs,voxelsInLayer',allCounts];
     planesWithAxonInThisArea = unique(planesWithAxonInThisArea);
+
 
 function [childTable,parentInd] = getChildAreas(areaName)
     childTable = getAllenStructureList('childrenOf',areaName);

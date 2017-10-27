@@ -71,11 +71,15 @@ function varargout = laminarPlots(laminarData,cleanCells)
                 continue
             end
 
-            subplot(3,4,n)
+            subplot(3,3,n)
 
-            tmp = squeeze(laminarData(ii).counts(:,2,:));
+            tmp = squeeze(laminarData(ii).counts(:,3,:));
+            tmp = single(tmp);
+            tmp = tmp ./ sum(tmp,1);
+            [~,ind]=sort(max(tmp,[],1),'descend');
+
             plot(tmp)
-
+            set(gca,'defaultAxesColorOrder',parula(length(ind)))
             title( sprintf('%s (%d cells)',...
                 laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
 
@@ -110,13 +114,13 @@ function varargout = laminarPlots(laminarData,cleanCells)
                 else
                     plural='s';
                 end
-                    
+
                 fprintf('Skipping "%s" with only %d cell%s.\n', laminarData(ii).areaName, ...
                     size(laminarData(ii).counts,3)<3, plural)
                 continue
             end
 
-            subplot(4,4,n)
+            subplot(3,3,n)
             counts = squeeze(laminarData(ii).counts(:,3,:))';
             counts = single(counts);
 
@@ -129,6 +133,9 @@ function varargout = laminarPlots(laminarData,cleanCells)
 
             counts(:,5) = counts(:,5) + counts(:,6); counts(:,6)=[];
 
+            % turn into proportion
+
+
             vol = squeeze(laminarData(ii).counts(:,2,:))';
             vol = single(vol);
             vol(:,5) = vol(:,5) + vol(:,6); vol(:,6)=[];
@@ -136,9 +143,11 @@ function varargout = laminarPlots(laminarData,cleanCells)
 
             if 1
                 plotData = counts./vol; %Calculate the density 
+                plotData = plotData ./ sum(plotData,2);
             else
-                plotData = counts;
+                counts=counts ./ sum(counts,2);
             end
+
             H=notBoxPlot(plotData);
             set([H.data],'MarkerSize',3)
 
