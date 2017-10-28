@@ -1,7 +1,7 @@
-function varargout = fitAreaPlane(areaInd,atlasVol,E)
+function varargout = fitAreaPlane(areaInd,atlasVol,E,fDims)
     % Fit a plane to a named brain area
     %
-    % function fitStats = fitAreaPlane(areaInd,atlasVol)
+    % function fitStats = fitAreaPlane(areaInd,atlasVol,E,fDims)
     %
     % Purpose
     % We want to make nice laminar plots of axons in a particular brain area, however
@@ -29,16 +29,22 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     %          You can also supply either this structure or the array manually using this argument.
     %          This should be a bit faster.
     % E - canny edge detected version of the atlas. do: E=canny(atlasVol);
+    % fDims - Default [1,2,3]. Otherwise any combination of dimension flips that should be applied to the atlas 
+    %         and the canny edge detected brain before fitting. Useful for, say, caudal areas. 
+    %         To project to caudal surface: [3,2,1]
+    %         To project to lateral surface: [2,1,3]
     %
     %
     % To get all:
     % >> v=brainAreaNames.visualAreas
-    % >> for ii=1:11; disp(ii), areaFits{ii}=fitAreaPlane(v{ii},LOADED_ARA,E); end
-
+    % >> for ii=1:13; disp(ii), areaFits{ii}=fitAreaPlane(v{ii},LOADED_ARA,E); end
+    %
+    %
+    % Rob Campbell - Basel 2017
 
 
     if nargin<1 || isempty(areaInd)
-        areaInd = 421;
+        areaInd = 421; % Just so we have a default
     else
         %otherwise handle the input argument
         if ischar(areaInd)
@@ -80,16 +86,24 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     end
 
 
+    if nargin<3
+        E = canny(atlasVol);
+    end
+
+    if nargin<4 || isempty(fDims)
+        fDims=1:3;
+    end
 
     %Work only on the caudal part of the hemisphere where we have acquired data
-    atlasVol(1:300,1:round(size(atlasVol,2)/2),:)=0;
-    E(1:300,1:round(size(atlasVol,2)/2),:)=0;
+    atlasVol(:,1:round(size(atlasVol,2)/2),:)=0;
+
+    E(:,1:round(size(atlasVol,2)/2),:)=0;
 
 
 
     % DIM FLIP
-    %atlasVol = permute(atlasVol,[3,2,1]);
-    %E = permute(E,[3,2,1]);
+    atlasVol = permute(atlasVol,fDims);
+    E = permute(E,fDims);
 
     %Find the surface points
     ef=find(E==1);
@@ -110,6 +124,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     childTable = childTable(sortInd,:);
     tMask = atlasVol;
     for ii=1:length(childTable.name)-1
+continue
         layerCoords(ii).name = childTable.name{ii};
         layerCoords(ii).id = childTable.id(ii);
         if ii>1
@@ -209,6 +224,8 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
     title('Fit to brain area surface')
     %ylim([-75,100])
     zlim([-20,100])
+    box on 
+    grid on
 
     % Subtract the fit from the surface (the residuals if we have just one layer)
     subplot(2,2,4)
@@ -234,6 +251,7 @@ function varargout = fitAreaPlane(areaInd,atlasVol,E)
         stats.areaInd = areaInd;
         stats.areaName = structureID2name(areaInd);
         stats.layers = layerCoords;
+        stats.fDims=fDims;
         varargout{1}=stats;
 
     end

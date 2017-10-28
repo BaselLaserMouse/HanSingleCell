@@ -1,7 +1,7 @@
 function varargout = layerFitter(stats)
     % function varargout = layerFitter(stats)
     %
-    % Test function 
+    % viewer for fitAreaPlane
 
 
 
@@ -28,7 +28,7 @@ function varargout = layerFitter(stats)
 
 
 
-function    layerPlotter(stats,dimPlot)
+function layerPlotter(stats,dimPlot)
     % Plots layers and fits them
     p=parula(length(stats.layers));
 
@@ -81,19 +81,51 @@ function    layerPlotter(stats,dimPlot)
 
 
     function transformedValues = applyTranform(points,stats)
-        %Subtract the offset
-        points(:,2) = points(:,2) - stats.mu.ml;
-        points(:,3) = points(:,3) - stats.mu.dv;
-        points(:,1) = points(:,1) - stats.mu.rc;
+        %Subtract the offset 
 
-        %Apply the affine tranform (ordered ml, rc, dv)
-        tPoints = points(:,[2,1,3])';
-        affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
+        % This way of handling the dimensions is crappy, but it works. 
+        if all(stats.fDims==1:3) %No dim flipping
+            points(:,2) = points(:,2) - stats.mu.ml;
+            points(:,3) = points(:,3) - stats.mu.dv;
+            points(:,1) = points(:,1) - stats.mu.rc;
 
-        transformedValues = affineTransformedPoints([2,1,3],:)'; %Flip back the dimensions to keep things consistent here
+            %Apply the affine tranform (ordered ml, rc, dv)
+            tPoints = points(:,[2,1,3])';
+            affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
 
-        % Now subtract the curviture of the surface from the DV values
-        fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
-        transformedValues(:,3) = transformedValues(:,3)-fittedValues;
+            transformedValues = affineTransformedPoints([2,1,3],:)'; %Flip back the dimensions to keep things consistent here
+
+            % Now subtract the curviture of the surface from the DV values
+            fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
+            transformedValues(:,3) = transformedValues(:,3)-fittedValues;
+
+        elseif all(stats.fDims==[3,2,1])
+            % This flip is for a swap of RC and DV
+            points(:,2) = points(:,2) - stats.mu.ml;
+            points(:,3) = points(:,3) - stats.mu.rc; %replace .dv with .rc 
+            points(:,1) = points(:,1) - stats.mu.dv; %replace .rc with .dv
+
+            %Apply the affine tranform (should be ordered ml, dv, rc)
+            tPoints = points(:,[2,3,1])';
+            affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
+
+            transformedValues = affineTransformedPoints([2,3,1],:)'; %Flip back the dimensions to keep things consistent here            
+
+            %NO CURVE CORRECTION
+        elseif all(stats.fDims==[2,1,3])
+            % This flip is for a swap of ML and RC
+            points(:,2) = points(:,2) - stats.mu.rc; %replace ml with rc
+            points(:,3) = points(:,3) - stats.mu.dv;
+            points(:,1) = points(:,1) - stats.mu.ml; %replace rc with ml
+
+            %Apply the affine tranform (ordered ml, rc, dv)
+            tPoints = points(:,[1,2,3])';
+            affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
+
+            transformedValues = affineTransformedPoints([1,2,3],:)'; %Flip back the dimensions to keep things consistent here   
+
+        else
+            error('Unknown dim flip')
+        end
 
 

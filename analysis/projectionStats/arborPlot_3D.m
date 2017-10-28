@@ -1,7 +1,10 @@
-function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indToPlot,stats)
+function varargout = arborPlot_3D(laminarData,cleanCells,cleanOnly,indToPlot,stats)
     % Plot arbors in a target area
     %
-    % out = arborPlot(laminarData,cleanCells,cleanOnly)
+    % out = arborPlot_3D(laminarData,cleanCells,cleanOnly)
+    %
+    % Purpose
+    % Used for brain areas with a lot curviture 
     %
     %
     % Inputs
@@ -12,7 +15,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
     % stats - the areaFits (see fitAreaPlane)
     %
     % e.g.
-    % >> ii=3;arborPlot(lamData,cleanCells,false,ii,areaFits{ii});
+    % >> ii=3;arborPlot-3D(lamData,cleanCells,false,ii,areaFits{ii});
 
 
 
@@ -45,73 +48,39 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
 
 
 
+    clf
+    tData=laminarData(indToPlot);
 
-    %doDotPlot
+    tPlanes = tData.planesInARA;
+    tCells = tData.cellID;
+    tAreaID = name2structureID(tData.areaName);
 
+    c=cleanCells.returnData;
 
+    details = [c.details];
+    cellIDs = {details.cellID};
+    colors = parula(length(tCells));
 
-        clf
-        tData=laminarData(indToPlot);
+    hold on
+    s=stats;
+    %s.fDims = 1:3;
+    for ii=1:length(tCells)
+        ind=strmatch(tCells{ii},cellIDs);
+        plotTree(c(ind),tData,s);
+    end
 
-        tPlanes = tData.planesInARA;
-        tCells = tData.cellID;
-        tAreaID = name2structureID(tData.areaName);
+    layerPlotter(stats)
 
-        c=cleanCells.returnData;
-
-        details = [c.details];
-        cellIDs = {details.cellID};
-        colors = parula(length(tCells));
-
-        ax1=axes('Position', [0.02,0.1,0.30,0.80]);
-        hold on
-        treeData=[];
-        for ii=1:length(tCells)
-            ind=strmatch(tCells{ii},cellIDs);
-            [~,tmp]=plotTree(c(ind),tData,stats,2,colors(ii,:));
-            treeData=[treeData;tmp];
-        end
-
-        title([tData.areaName, ' (coronal)'])
-
-        set(ax1,'XLimMode','manual');
-
-        addLayerBoundaries(stats,2)
-        YL=ylim;
-        axis equal off
-
-        p=plotboxpos(ax1);
-        axes('Position', [0.32,p(2),0.10,p(4)])
-        plotDensity(treeData)
-        set(gca,'XLim',YL)
-        drawnow
-        box on
-
-
-        %Sagittal
-        ax3=axes('Position', [0.52,0.1,0.30,0.80]);
-        hold on
-        for ii=1:length(tCells)
-            ind=strmatch(tCells{ii},cellIDs);
-            plotTree(c(ind),tData,stats,1,colors(ii,:));
-        end
-
-        title([tData.areaName, ' (sagittal)'])
-        set(ax3,'XLimMode','manual')
-        
-        %try adding layer boundaries
-        addLayerBoundaries(stats,1)
-        axis equal off
-        p=plotboxpos(ax3);
-        axes('Position', [0.82,p(2),0.10,p(4)])
-        plotDensity(treeData)
-        set(gca,'XLim',YL)
+    view(3)
+    axis ij equal
+    grid on
+    box on
 
 
 
 
 %-------------------------------------------------------------------------------------------
-    function [h,treeData]=plotTree(data,tData,stats,dimPlot,tColor)
+    function h=plotTree(data,tData,stats)
         if nargin<3
             stats=[];
         end
@@ -127,7 +96,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
 
         thisArea = name2structureID(tData.areaName);
 
-        treeData=[];
+
         for ii=1:length(segmentRows)
             theseNodes = neuriteTree.Node(segmentRows{ii});
             theseData = ones(length(theseNodes),3);
@@ -150,95 +119,49 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
                 theseData = applyTranform(theseData,stats);
             end
 
-            h(ii)=plot(theseData(:,dimPlot), theseData(:,3), '-', ...
+            h(ii)=plot3(theseData(:,1), theseData(:,2), theseData(:,3), '-', ...
                 'linewidth',0.5, 'Color', tColor);
-            treeData=[treeData;theseData(:,3)];
+
         end % for ii=...
-        treeData(isnan(treeData))=[];
-        axis ij equal tight
 
-    function plotDensity(treeData)
-        [n,x]=hist(treeData,0:1:round(max(treeData)));
-        n = smooth(n,3);
-        n(1)=0; %Otherwise the plot baseline is skewed
-        if ~isempty(x)
-            ptch=patch(x,n,1);
+    function layerPlotter(stats)
+        % Plots layers and fits them
+        p=parula(length(stats.layers));
 
-            set(gca,'view',[90 90])
-            set(ptch,'FaceColor','k','EdgeColor','k')
-        else
-            fprintf('Failed to extract layer data\n')
-        end
-        axis off
 
-    function addLayerBoundaries(stats,dimPlot)
-        if ~isfield(stats,'layers')
-            return
-        end
 
-        layerTickSize=3; %Size of the layer ticks in 25 micron voxels;
-        minX=zeros(1,length(stats.layers));
-        maxX=zeros(1,length(stats.layers));
-        muY=zeros(1,length(stats.layers));
         for ii=1:length(stats.layers)
             tData = [stats.layers(ii).RC,stats.layers(ii).ML,stats.layers(ii).DV];
             tData = applyTranform(tData,stats);
 
-            % Fit a surface to these layer data
+
+            % Fit a surface to these data
             X = [ones(size(tData,1),1), tData(:,1), tData(:,2)];
             fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y;
             [b,fSTATS] = regress(tData(:,3),X);
 
-            x1fit = min(tData(:,1))-layerTickSize:1:max(tData(:,1))+layerTickSize;
-            x2fit = min(tData(:,2))-layerTickSize:1:max(tData(:,2))+layerTickSize;
+            x1fit = 1.2*min(tData(:,1)):1:max(tData(:,1))*1.2;
+            x2fit = 1.2*min(tData(:,2)):1:max(tData(:,2))*1.2;
             [X1FIT,X2FIT] = meshgrid(x1fit,x2fit);
-            if isempty(X1FIT)
-                fprintf('Failed to generate meshgrid for layer %d\n', ii);
-                continue
-            end
             YFIT = fitfunc(X1FIT, X2FIT, b);
 
-            %  plot(tData(:,dimPlot), tData(:,3),'.','color',p(ii,:))
-            if dimPlot==1
-                n=round(size(X1FIT,1)/2);
-                X = X1FIT(n,:);
-                Y = YFIT(n,:);
-            elseif dimPlot==2
-                n=round(size(X2FIT,2)/2);
-                X = X2FIT(:,n);
-                Y = YFIT(:,n);
-            end
-            plot(X,Y,':','color',[1,0,0,0.7],'linewidth',1)
-            minX(ii)=min(X);
-            maxX(ii)=max(X);
-            muY(ii)=mean(Y);
+            %Fit it
+            %X = [ones(size(tData,1),1), tData(:,1), tData(:,2), tData(:,1).^2, tData(:,2).^2 tData(:,1).^3, tData(:,2).^3];
+            %X = [ones(size(tData,1),1), tData(:,1), tData(:,2), tData(:,1).^2, tData(:,2).^2];
 
-        end %for ii=1:length(stats.layers)
 
-        %The little things on the edges
-        labX=xlim;
+            %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2 + b(6)*x.^3 + b(7)*y.^3;
+            %fitfunc = @(x,y,b) b(1) + b(2)*x + b(3)*y + b(4)*x.^2 + b(5)*y.^2;
 
-        labelText={'L1','L2/3','L4','L5','L6'};
-        for ii=1:length(minX)
-            if muY(ii) == 0 && minX(ii)==0, continue, end
-                if ii<length(minX)
-                    labY = mean(muY(ii:ii+1));
-                    text(labX(1),labY,labelText{ii},'FontSize',12)
-                end
-            plot([labX(1),labX(1)+layerTickSize], [muY(ii),muY(ii)], '--k')
-            plot([labX(2),labX(2)-layerTickSize], [muY(ii),muY(ii)], '--k')
-        end
+            plot3(tData(:,1), tData(:,2), tData(:,3), '.','color',p(ii,:));
 
-        %Scale bar
-        xl = xlim;
-        rightPoint = xl(2)-range(xl)*0.2;
-        yl = ylim;
-        ypos = muY(end)+3;
+        end %for
 
-        plot([rightPoint-8,rightPoint], [ypos,ypos], '-k', 'LineWidth', 5)
-        xlim(labX)
+
+
 
     function transformedValues = applyTranform(points,stats)
+        %Subtract the offset 
 
         % This way of handling the dimensions is crappy, but it works. 
         if all(stats.fDims==1:3) %No dim flipping
@@ -251,6 +174,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
             affineTransformedPoints = applyAffineTransform(tPoints,stats.affine,[],false);
 
             transformedValues = affineTransformedPoints([2,1,3],:)'; %Flip back the dimensions to keep things consistent here
+
 
             % Now subtract the curviture of the surface from the DV values
             fittedValues = stats.fitfunc(transformedValues(:,2), transformedValues(:,1), stats.b);
@@ -268,7 +192,6 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
 
             transformedValues = affineTransformedPoints([2,3,1],:)'; %Flip back the dimensions to keep things consistent here            
 
-            %NO CURVE CORRECTION
         elseif all(stats.fDims==[2,1,3])
             % This flip is for a swap of ML and RC
             points(:,2) = points(:,2) - stats.mu.rc; %replace ml with rc
@@ -284,3 +207,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         else
             error('Unknown dim flip')
         end
+
+
+
+
