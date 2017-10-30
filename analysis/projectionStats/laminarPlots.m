@@ -1,6 +1,8 @@
 function varargout = laminarPlots(laminarData,cleanCells)
     % Plot distribution of terminals by layer within a subset of defined areas
     %
+    % Distribution plots
+    % 
     % out = laminarPlots(laminarData,cleanCells)
     %
     %
@@ -39,7 +41,7 @@ function varargout = laminarPlots(laminarData,cleanCells)
     doBoxPlots
     %doLinePlots
 
-    labelEdgeSubPlots('Layer','axon length/layer cross-section area') 
+    labelEdgeSubPlots('Layer',sprintf('Proportion of axon length in each layer\nnormalized by layer cross-section area') )
 
     c=get(gcf,'children');
     yl=[];
@@ -53,6 +55,11 @@ function varargout = laminarPlots(laminarData,cleanCells)
     end
 
     set(c,'YLim',[0, max(yl(:,2))])
+    set(gcf,'PaperPosition',[0,0,40,30])
+
+
+
+
 
     function doLinePlots
         % Linked points as lines so we know which cell is which in all layers
@@ -71,7 +78,7 @@ function varargout = laminarPlots(laminarData,cleanCells)
                 continue
             end
 
-            subplot(3,3,n)
+            subplot(3,4,n)
 
             tmp = squeeze(laminarData(ii).counts(:,3,:));
             tmp = single(tmp);
@@ -80,8 +87,9 @@ function varargout = laminarPlots(laminarData,cleanCells)
 
             plot(tmp)
             set(gca,'defaultAxesColorOrder',parula(length(ind)))
-            title( sprintf('%s (%d cells)',...
-                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
+%            title( sprintf('%s (%d cells)',...
+%                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
+            title( sprintf(laminarData(ii).shortName))
 
             % Make nice x axis labels
             lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);
@@ -108,7 +116,8 @@ function varargout = laminarPlots(laminarData,cleanCells)
                 fprintf('Nothing for area %s\n', laminarData(ii).areaName)
                 continue
             end
-            if size(laminarData(ii).counts,3)<3
+
+            if size(laminarData(ii).counts,3)<10
                 if size(laminarData(ii).counts,3)==1
                     plural='';
                 else
@@ -120,7 +129,19 @@ function varargout = laminarPlots(laminarData,cleanCells)
                 continue
             end
 
-            subplot(3,3,n)
+            %Remove any cells that need excluding, should this have been requested
+            if isfield(laminarData(ii),'brainsToExclude') && ~isempty(laminarData(ii).brainsToExclude)
+                excl = laminarData(ii).brainsToExclude;
+                indToRemove=[];
+                for ff=1:length(excl)
+                    indToRemove=[indToRemove;strmatch(excl{ff},laminarData(ii).cellID)];
+                end
+                laminarData(ii).counts(:,:,indToRemove)=[];
+                laminarData(ii).cellID(indToRemove)=[];
+                laminarData(ii).traceFiles(indToRemove)=[];
+            end
+
+            subplot(2,4,n)
             counts = squeeze(laminarData(ii).counts(:,3,:))';
             counts = single(counts);
 
@@ -149,10 +170,24 @@ function varargout = laminarPlots(laminarData,cleanCells)
             end
 
             H=notBoxPlot(plotData);
-            set([H.data],'MarkerSize',3)
+            set([H.data],'MarkerSize',3,'MarkerFaceColor',[1,1,1]*0.25,'LineWidth',0.25)
+            delete([H.sdPtch])
+            set([H.semPtch], 'FaceColor', [0.75,0.67,0.67], 'EdgeColor', [0.66,0.5,0.5])
+            set([H.mu],'LineWidth',3)
+            %Add medians
 
-            title( sprintf('%s (%d cells)',...
-                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
+            M=median(plotData);
+            hold on
+
+            for kk=1:length(M)
+                y=[M(kk),M(kk)];
+                x=H(kk).mu.XData;
+                plot(H(kk).mu.XData,y,'-b','LineWidth',H(kk).mu.LineWidth)
+            end
+
+%            title( sprintf('%s (%d cells)',...
+%                laminarData(ii).areaName, size(laminarData(ii).counts,3)) )
+            title( sprintf(laminarData(ii).shortName))
 
             % Make nice x axis labels
             lab=cellfun(@(x) regexprep(x,'.* ',''), laminarData(ii).areaTable.name ,'UniformOutput', false);

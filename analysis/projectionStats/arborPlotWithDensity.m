@@ -76,7 +76,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
             treeData=[treeData;tmp];
         end
 
-        title([tData.areaName, ' (coronal)'])
+        title([tData.shortName, ' (coronal)'])
 
         set(ax1,'XLimMode','manual');
 
@@ -100,7 +100,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
             plotTree(c(ind),tData,stats,1,colors(ii,:));
         end
 
-        title([tData.areaName, ' (sagittal)'])
+        title([tData.shortName, ' (sagittal)'])
         set(ax3,'XLimMode','manual')
         
         %try adding layer boundaries
