@@ -111,7 +111,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         plotDensity(treeData)
 
 
-        set(gcf,'PaperPosition', [0,0,40,25])
+        set(gcf,'PaperPosition', [0,0,40,25],'Renderer','painters')
 
 
 

@@ -47,9 +47,6 @@ function varargout=topViewProjectionMultipleCells(X,laminarData)
 
     % labels
 
-
-    set(gcf,'Renderer','zbuffer')
-    
     hold on 
     H.tracesSagittal={};
     H.tracesTransverse={};
@@ -87,8 +84,7 @@ function varargout=topViewProjectionMultipleCells(X,laminarData)
     end
 
 
-
-    set(gcf,'PaperPosition',[0,0,20,20])
+    set(gcf,'PaperPosition',[0,0,20,20],'Renderer','painters')
 
     if nargout>0
         varargout{1}=H;
@@ -107,7 +103,7 @@ function h=plotTree(data,ax)
             theseData(jj,:) = theseNodes{jj};
         end
 
-        lineProps={'-','linewidth',0.5, 'Color', [0,0,0.15,0.3]};
+        lineProps={'-','linewidth',0.5, 'Color', [0,0.15,0.3]};
         switch ax.Tag
             case 'transverse'
                 h(ii)=plot(ax,theseData(:,2), theseData(:,1), lineProps{:});
