@@ -78,9 +78,6 @@ function varargout=topViewProjectionMultipleCells(X,laminarData)
 
         H.somaTransverse{end+1}=plotSoma(d(ind).neuriteTree, H.axesTransverse);
         H.somaSagittal{end+1}=plotSoma(d(ind).neuriteTree, H.axesSagittal);
-        if mod(ii,8)==0
-            drawnow
-        end
     end
 
 
@@ -103,7 +100,7 @@ function h=plotTree(data,ax)
             theseData(jj,:) = theseNodes{jj};
         end
 
-        lineProps={'-','linewidth',0.5, 'Color', [0,0.15,0.3]};
+        lineProps={'-','linewidth',0.25, 'Color', [0.075,0.25,0.4]};
         switch ax.Tag
             case 'transverse'
                 h(ii)=plot(ax,theseData(:,2), theseData(:,1), lineProps{:});

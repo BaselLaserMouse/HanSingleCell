@@ -2,7 +2,7 @@ function saveLaminarPlots(lamData,cleanCells,areaFits)
 % save all arbor plots
 
 
-    lamPlotInd = [1,2,3,4,5];
+    lamPlotInd = [1,2,3,4,5,9,13];
 
     for ii=1:length(lamPlotInd)
         %if length(lamData(ii).cellID)<6, continue, end
