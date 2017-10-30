@@ -67,6 +67,10 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         hold on
         treeData=[];
         for ii=1:length(tCells)
+            if isfield(tData,'brainsToExclude') &&  any( cellfun(@(x) startsWith(tCells{ii},x), tData.brainsToExclude) )
+                fprintf('Skipping %s\n', tCells{ii})
+                continue
+            end
             ind=strmatch(tCells{ii},cellIDs);
             [~,tmp]=plotTree(c(ind),tData,stats,2,colors(ii,:));
             treeData=[treeData;tmp];
@@ -77,21 +81,21 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         set(ax1,'XLimMode','manual');
 
         addLayerBoundaries(stats,2)
-        YL=ylim;
         axis equal off
 
         p=plotboxpos(ax1);
-        axes('Position', [0.32,p(2),0.10,p(4)])
         plotDensity(treeData)
-        set(gca,'XLim',YL)
         drawnow
-        box on
 
 
         %Sagittal
         ax3=axes('Position', [0.52,0.1,0.30,0.80]);
         hold on
         for ii=1:length(tCells)
+            if isfield(tData,'brainsToExclude') &&  any( cellfun(@(x) startsWith(tCells{ii},x), tData.brainsToExclude) )
+                fprintf('Skipping %s\n', tCells{ii})
+                continue
+            end
             ind=strmatch(tCells{ii},cellIDs);
             plotTree(c(ind),tData,stats,1,colors(ii,:));
         end
@@ -103,10 +107,11 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         addLayerBoundaries(stats,1)
         axis equal off
         p=plotboxpos(ax3);
-        axes('Position', [0.82,p(2),0.10,p(4)])
-        plotDensity(treeData)
-        set(gca,'XLim',YL)
 
+        plotDensity(treeData)
+
+
+        set(gcf,'PaperPosition', [0,0,40,25])
 
 
 
@@ -161,15 +166,22 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
         [n,x]=hist(treeData,0:1:round(max(treeData)));
         n = smooth(n,3);
         n(1)=0; %Otherwise the plot baseline is skewed
-        if ~isempty(x)
-            ptch=patch(x,n,1);
+        n(end)=0; %Otherwise the plot baseline is skewed
+        XL=xlim;
+        n=n/max(n);
+        n = n * range(XL)*0.2;
+        n = n+XL(2);
 
-            set(gca,'view',[90 90])
+        if ~isempty(x)
+            ptch=patch(n,x,1);
+
+%            set(gca,'view',[90 90])
             set(ptch,'FaceColor','k','EdgeColor','k')
         else
             fprintf('Failed to extract layer data\n')
         end
-        axis off
+
+        set(gca,'Clipping','off')
 
     function addLayerBoundaries(stats,dimPlot)
         if ~isfield(stats,'layers')
@@ -208,7 +220,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
                 X = X2FIT(:,n);
                 Y = YFIT(:,n);
             end
-            plot(X,Y,':','color',[1,0,0,0.7],'linewidth',1)
+            %plot(X,Y,':','color',[1,0,0,0.7],'linewidth',1)
             minX(ii)=min(X);
             maxX(ii)=max(X);
             muY(ii)=mean(Y);
@@ -229,7 +241,7 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
             plot([labX(2),labX(2)-layerTickSize], [muY(ii),muY(ii)], '--k')
         end
 
-        %Scale bar
+        % Scale bar
         xl = xlim;
         rightPoint = xl(2)-range(xl)*0.2;
         yl = ylim;
@@ -237,6 +249,21 @@ function varargout = arborPlotWithDensity(laminarData,cleanCells,cleanOnly,indTo
 
         plot([rightPoint-8,rightPoint], [ypos,ypos], '-k', 'LineWidth', 5)
         xlim(labX)
+
+        % Add an M/L scale bar
+        plot([xl(1)+5,xl(1)+8], [yl(2)-1,yl(2)-1], '-k','LineWidth',3)
+        plot([xl(1)+5,xl(1)+5], [yl(2)-1,yl(2)-4], '-k','LineWidth',3)
+        text(xl(1)+4.5, yl(2)-5, 'D')
+
+        if dimPlot==1
+            text(xl(1)+8.5, yl(2)-1, 'R')
+        elseif dimPlot==2
+            text(xl(1)+8.5, yl(2)-1, 'L')
+        end
+            
+%        plot([xl(1),xl(1)+2,'-k','LineWidth',3])
+
+
 
     function transformedValues = applyTranform(points,stats)
 

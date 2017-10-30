@@ -158,8 +158,6 @@ function varargout = arborPlot_3D(laminarData,cleanCells,cleanOnly,indToPlot,sta
         end %for
 
 
-
-
     function transformedValues = applyTranform(points,stats)
         %Subtract the offset 
 
