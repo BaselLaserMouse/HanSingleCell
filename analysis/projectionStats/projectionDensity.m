@@ -64,8 +64,13 @@ function varargout = projectionDensity(cleanCells,areaMap,plotPrem,plotNonV1)
     % Axon length as a function of the number of target areas
     subplot(2,2,1)
     %Plot only clean v1 cells
-    tmp = M(:,cleanV1ind);
-    plot(sum(tmp>0), sum(tmp), cleanMrkr{:});
+    V1_plt_tmp = M(:,cleanV1ind);
+    yV1=sum(V1_plt_tmp)
+    xV1=sum(V1_plt_tmp>0)
+    yV1./xV1
+    nanmean(yV1./xV1)
+    nanstd(yV1./xV1)
+    plot(xV1, yV1, cleanMrkr{:});
     hold on 
 
     if plotPrem

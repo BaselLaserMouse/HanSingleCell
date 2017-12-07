@@ -5,7 +5,7 @@ function varargout = area_barplot(data,errB)
     %
     % Where "data" is:
     %
-    % >> for ii=2:13, [~,data{ii}]=clusterPos(allCellMat,cleanCells,ii); end
+    % >> for ii=2:13, [~,data{ii}]=clusterPos(cleanCells,ii); end
     %
     % errB is the bootstrapped error bar map produced by this function.
     % feeding it in as an input argument stops it being regenerated each time.
@@ -24,6 +24,7 @@ pltData.L = zeros(1,length(data)-2);
 % to help make the bar labels 
 [n,c,abrv]=brainAreaNames.visualAreas;
 xLabels = containers.Map(c.areaNames, abrv(1:end-1) );
+
 
 n=1;
 for ii=1:length(data)
@@ -50,6 +51,8 @@ for ii=1:length(data)
     n=n+1;
 end
 
+
+
 % Let's bootstrap some error bars based on the sample sizes
 if nargin<2
     n=unique(pltData.all);
@@ -70,7 +73,7 @@ title('R/C')
 hR=bar(pltData.R);
 hold on 
 hC=bar(-pltData.C);
-ylim([-20,20])
+ylim([-22,22])
 
 set(hR,'FaceColor',[1,0.55,0.55],'EdgeColor',[0.75,0,0])
 set(hC,'FaceColor',[0.55,0.55,1],'EdgeColor',[0,0,0.75])
@@ -90,8 +93,8 @@ for x = 1:length(pltData.all)
 
 
     %Look for significant differences
-    obs=abs(pltData.R(x)-pltData.C(x));
-    bs = errB(n).R-errB(n).C;
+    obs = abs(pltData.R(x)-pltData.C(x));
+    bs = abs(errB(n).R-errB(n).C);
     p=length(find(bs>obs))/length(bs);
 
     if p==0
@@ -114,7 +117,7 @@ title('M/L')
 hM=bar(pltData.M);
 hold on 
 hL=bar(-pltData.L);
-ylim([-20,20])
+ylim([-22,22])
 
 set(hM,'FaceColor',[1,0.55,0.55],'EdgeColor',[0.75,0,0])
 set(hL,'FaceColor',[0.55,0.55,1],'EdgeColor',[0,0,0.75])
@@ -131,14 +134,14 @@ for x = 1:length(pltData.all)
     plot([x-W,x+W], [mu,mu], erbMrkr{:})
 
     %Look for significant differences
-    obs=abs(pltData.M(x)-pltData.L(x));
-    bs = errB(n).M-errB(n).L;
+    obs = abs(pltData.M(x)-pltData.L(x));
+    bs = abs(errB(n).M-errB(n).L);
     p=length(find(bs>obs))/length(bs);
 
     if p==0
         p=1/length(bs);
         text(x-0.4, pltData.R(x)+2,'p<1x10e^{-4}','FontSize',11)
-    elseif p<0.025
+    elseif p<0.05
         text(x-0.4, pltData.R(x)+2,sprintf('p=%0.4f',p),'FontSize',11)
     end
 
@@ -158,8 +161,9 @@ end
 
 
 function errB = btstrpErrBar(d,n,reps) % generate a bootstrap chance value for this sample size
-    % errB(1) is the number on the rostral side
-    % errB(2) is the number on the ML
+    % d - the data
+    % n - the number of neurons we will simulate
+    % reps - how many replicates to make
 
     errB.R = zeros(1,reps);
     errB.C = zeros(1,reps);

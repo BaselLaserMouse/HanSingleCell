@@ -12,7 +12,7 @@ function varargout = clusterPos(cleanCells,highlightName)
     %
     %
     % e.g.
-    % >> load ~/tvtoucan/Mrsic-Flogel/hanyu/Analyses/cleanCells.mat
+    % >> load ~/tvtoucan/Mrsic-Flogel/hanSingleCell2017/Analyses/cleanCells.mat
     % >> clusterPos(cleanCells,3)
     %
     %
